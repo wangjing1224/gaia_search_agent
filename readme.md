@@ -14,6 +14,8 @@
 ### 1. 安装依赖
 ```bash
 pip install -r requirements.txt
+```
+
 2. 配置环境变量
 复制 .env.example 为 .env，并填入你的 Key：
 
