@@ -18,3 +18,8 @@ env/
 # 忽略系统文件
 .DS_Store
 Thumbs.db
+
+# ... 原有内容 ...
+
+# 忽略 LangGraph 本地调试数据
+.langgraph_api/
