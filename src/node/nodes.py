@@ -2,9 +2,10 @@
 from src.state.state import AgentState
 from src.llm.model import get_llm
 from src.tools.search import get_tools
+from src.interface_tools.search_interface import search_interface
 
 # 初始化 LLM 和 Tools
-tools = get_tools()
+tools = [search_interface]
 llm = get_llm()
 
 # 将工具绑定到 LLM (Function Calling)
