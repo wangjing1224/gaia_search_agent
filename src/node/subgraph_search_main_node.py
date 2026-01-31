@@ -10,7 +10,7 @@ tools = [web_search_Tavily]
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]
-    reranked_results = state["reranked_results"]
+    reranked_results = state.get("reranked_results", "No search results yet.")
     
     SEARCH_SYSTEM_PROMPT = f"""
     You are a expert of searching the web for information to help answer user queries.

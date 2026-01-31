@@ -20,6 +20,8 @@ def route_to_search_tool(state: SubgraphSearchState):
     # 根据工具名称路由到对应的工具节点
     if tool_name == "web_search_Tavily":
         return "search_tools_execution_node"
+    else:
+        return "tools"
     
     return END  # 默认结束
 
@@ -49,13 +51,10 @@ def create_subgraph_search_graph():
     # 条件边：子图搜索主节点 决定是 "结束" 还是 "调用工具"
     workflow.add_conditional_edges(
         "subgraph_search_main",
-        tools_condition,
-    )
-    workflow.add_conditional_edges(
-        "subgraph_search_main",
         route_to_search_tool,
         {
             "search_tools_execution_node": "search_tools_execution_node",
+            "tools": "tools",
             END: END,
         }
     )
