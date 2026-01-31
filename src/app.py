@@ -27,7 +27,10 @@ async def chat_endpoint(request: Request):
         # 2. 调用 LangGraph
         # Research Agent 可能需要跑几十秒，这里使用 ainvoke 等待结果
         # 注意：user_id 可以随机生成或固定，用于隔离会话
-        inputs = {"messages": [("user", question)]}
+        inputs = {
+            "messages": [("user", question)],
+            "user_initial_query": question
+        }
         
         # 运行图
         result = await graph.ainvoke(inputs)

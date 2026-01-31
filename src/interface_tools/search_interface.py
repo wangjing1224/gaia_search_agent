@@ -3,7 +3,10 @@ from pydantic import BaseModel, Field
 
 class search_interface_args(BaseModel):
     query: str = Field(..., description="The search query.")
-    depth: str = Field(..., description="The depth of the search. Options are 'brief' or 'detailed'.", default="brief")
+    depth: str = Field(
+        default="brief",
+        description="The depth of the search. Options are 'brief' or 'detailed'.",
+    )
     
 @tool('search_interface', args_schema=search_interface_args)
 def search_interface(query: str, depth: str = "brief") -> str:

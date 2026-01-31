@@ -17,7 +17,7 @@ Your goal is to respond to user queries accurately and efficiently.
 
 def call_model(state: AgentState):
     messages = state["messages"]
-    
+        
     system_message = SystemMessage(content=ANGENt_SYSTEM_PROMPT)
     
     
