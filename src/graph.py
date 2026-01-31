@@ -8,7 +8,7 @@ from src.tools.search import get_tools
 from src.interface_tools.search_interface import search_interface
 from src.node.search_graph_wrapper_node import search_graph_wrapper_node
 
-def route_to_tool(state):
+def route_to_tool(state: AgentState):
     messages = state["messages"]
     last_message = messages[-1]
     
