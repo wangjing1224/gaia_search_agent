@@ -36,36 +36,36 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
             else:
                 pass  # 未知工具，忽略
             
-            # 并发执行任务，并收集结果
-            if tasks:
-                print(f"Executing {len(tasks)} tool calls concurrently...")
+        # 并发执行任务，并收集结果
+        if tasks:
+            print(f"Executing {len(tasks)} tool calls concurrently...")
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for i, result in enumerate(results):
+                tool_call = tool_call_map[i]
                 
-                results = await asyncio.gather(*tasks, return_exceptions=True)
+                # 处理异常情况
+                if isinstance(result, Exception):
+                    print(f"Tool {tool_call['name']} execution failed: {result}")
+                    result_content = [{"source": tool_call['name'], "content": f"Error: {str(result)}", "title": "Error", "url": ""}]
+                    result_content = result
                 
-                for i, result in enumerate(results):
-                    tool_call = tool_call_map[i]
-                    
-                    # 处理异常情况
-                    if isinstance(result, Exception):
-                        print(f"Tool {tool_call['name']} execution failed: {result}")
-                        result_content = [{"source": tool_call['name'], "content": f"Error: {str(result)}", "title": "Error", "url": ""}]
-                        result_content = result
-                    
-                    # 收集搜索结果
-                    if isinstance(result_content, list):
-                        search_results_list.extend(result_content)
-                    else:
-                        search_results_list.append(result_content)
-                    
-                    # 构造 ToolMessage
-                    fake_tool_content = f"Tool {tool_call['name']} executed successfully."
-                    tool_message = ToolMessage(
-                        content=fake_tool_content,
-                        tool_call_id=tool_call["id"],
-                        name=tool_call["name"], 
-                    )
-                    
-                    new_message.append(tool_message)
+                # 收集搜索结果
+                if isinstance(result_content, list):
+                    search_results_list.extend(result_content)
+                else:
+                    search_results_list.append(result_content)
+                
+                # 构造 ToolMessage
+                fake_tool_content = f"Tool {tool_call['name']} executed successfully."
+                tool_message = ToolMessage(
+                    content=fake_tool_content,
+                    tool_call_id=tool_call["id"],
+                    name=tool_call["name"], 
+                )
+                
+                new_message.append(tool_message)
                     
     # 返回包含工具调用结果的新消息列表和搜索结果        
     return {
