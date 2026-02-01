@@ -11,7 +11,7 @@ tools = [web_search_Tavily, wikipedia_search_tool]
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]
-    reranked_results = state.get("reranked_results", "")
+    reranked_results = state.get("reranked_results", [])
     
     # 拼接rerank结果
     reranked_results_str = ""
