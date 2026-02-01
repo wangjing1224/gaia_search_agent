@@ -3,7 +3,7 @@ import asyncio
 from langchain_core.messages import ToolMessage
 from src.tools.tavily_tool import web_search_Tavily
 from src.state.subgraph_search_state import SubgraphSearchState
-from src.tools.wikipedia_search_tool import wikipedia_search_tool
+from src.tools.wikipedia_search_tool import web_search_wikipedia
 
 async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
     messages = state["messages"]
@@ -28,8 +28,8 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
                 tasks.append(task)
                 tool_call_map.append(tool_call)
             
-            elif tool_call["name"] == "wikipedia_search_tool":
-                task = wikipedia_search_tool.ainvoke(tool_args.get("query",""))
+            elif tool_call["name"] == "web_search_wikipedia":
+                task = web_search_wikipedia.ainvoke(tool_args.get("query",""))
                 tasks.append(task)
                 tool_call_map.append(tool_call)
             
@@ -47,12 +47,15 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
                     
                     # 处理异常情况
                     if isinstance(result, Exception):
-                        result_content = f"Error executing tool {tool_call['name']}: {str(result)}"
-                    else:
+                        print(f"Tool {tool_call['name']} execution failed: {result}")
+                        result_content = [{"source": tool_call['name'], "content": f"Error: {str(result)}", "title": "Error", "url": ""}]
                         result_content = result
                     
                     # 收集搜索结果
-                    search_results_list.extend(result_content)
+                    if isinstance(result_content, list):
+                        search_results_list.extend(result_content)
+                    else:
+                        search_results_list.append(result_content)
                     
                     # 构造 ToolMessage
                     fake_tool_content = f"Tool {tool_call['name']} executed successfully."

@@ -18,13 +18,11 @@ def route_to_search_tool(state: SubgraphSearchState):
     tool_name = last_message.tool_calls[0]["name"]
     
     # 根据工具名称路由到对应的工具节点
-    if tool_name == "web_search_Tavily":
+    if tool_name == "web_search_Tavily" or tool_name == "web_search_wikipedia":
         return "search_tools_execution_node"
     else:
         return "tools"
     
-    return END  # 默认结束
-
 
 def create_subgraph_search_graph():
     # 1. 初始化 Graph Builder
