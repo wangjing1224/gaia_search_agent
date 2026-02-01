@@ -4,6 +4,8 @@ from langchain_core.messages import ToolMessage
 from src.tools.tavily_tool import web_search_Tavily
 from src.state.subgraph_search_state import SubgraphSearchState
 from src.tools.wikipedia_search_tool import web_search_wikipedia
+from src.state.search_result import SearchResult
+from typing import List
 
 async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
     messages = state["messages"]
@@ -45,17 +47,29 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
             for i, result in enumerate(results):
                 tool_call = tool_call_map[i]
                 
+                current_results: List[SearchResult] = []
+                
                 # 处理异常情况
                 if isinstance(result, Exception):
-                    print(f"Tool {tool_call['name']} execution failed: {result}")
-                    result_content = [{"source": tool_call['name'], "content": f"Error: {str(result)}", "title": "Error", "url": ""}]
-                    result_content = result
-                
-                # 收集搜索结果
-                if isinstance(result_content, list):
-                    search_results_list.extend(result_content)
+                    error_result:SearchResult = {
+                        "title": "Tool Execution Error",
+                        "content": f"Error executing tool {tool_call['name']}: {str(result)}",
+                        "url": "None",
+                        "source": "System"
+                    }
+                    current_results.append(error_result)
+                    fake_tool_content = f"Tool {tool_call['name']} execution failed."
                 else:
-                    search_results_list.append(result_content)
+                    # 正常结果处理
+                    if isinstance(result, list):
+                        # 工具返回的是结果列表
+                        current_results = result
+                    else:
+                        # 防止工具返回非列表结果
+                        current_results = []
+                    fake_tool_content = f"Tool {tool_call['name']} executed successfully."
+                # 汇总搜索结果
+                search_results_list.extend(current_results)
                 
                 # 构造 ToolMessage
                 fake_tool_content = f"Tool {tool_call['name']} executed successfully."
