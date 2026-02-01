@@ -1,10 +1,14 @@
 import os
+import asyncio
 # 1. 引入 dotenv 用于加载环境变量
 from dotenv import load_dotenv
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
+
+from typing import List, Dict
+from src.state.search_result import SearchResult
 
 # 2. 在获取 Key 之前，先加载环境变量
 # 这会寻找当前目录或父级目录下的 .env 文件并加载
@@ -19,15 +23,26 @@ if not tavily_key:
 
 class web_search_Tavily_args(BaseModel):
     query: str = Field(..., description="The search query.")
-    max_results: int = Field(5, description="The maximum number of search results to return.Default is 5.")
+    max_results: int = Field(10, description="The maximum number of search results to return.Default is 10.")
 
 @tool('web_search_Tavily', args_schema=web_search_Tavily_args)
-def web_search_Tavily(query: str ,max_results: int = 5) -> str:
+async def web_search_Tavily(query: str ,max_results: int = 10) -> List[SearchResult]:
     """Use Tavily to search the web for relevant information.
 
     Args:
         query: The search query.
-        max_results: The maximum number of search results to return. Default is 5.
+        max_results: The maximum number of search results to return. Default is 10.
+    Returns:
+        The search results from Tavily.
+    """
+    return await asyncio.to_thread(web_search_Tavily_sync, query, max_results)
+
+def web_search_Tavily_sync(query: str ,max_results: int = 10) -> List[SearchResult]:
+    """Use Tavily to search the web for relevant information.
+
+    Args:
+        query: The search query.
+        max_results: The maximum number of search results to return. Default is 10.
     Returns:
         The search results from Tavily.
     """
@@ -38,6 +53,8 @@ def web_search_Tavily(query: str ,max_results: int = 5) -> str:
         max_results=max_results
     )
     
+    cleaned_results: List[SearchResult] = []
+    
     # 执行搜索
     # try-except 块有助于在单独测试时看清具体网络错误
     try:
@@ -45,26 +62,34 @@ def web_search_Tavily(query: str ,max_results: int = 5) -> str:
         
         # 简单的容错处理，防止 results 为空或格式不对
         if not results:
-            return "No results found."
-
-        formatted_results = "\n".join([
-            f"{i+1}. {result['title']}: {result['url']}\nContent: {result['content']}" 
-            for i, result in enumerate(results)
-        ])
-        return formatted_results
+            return []
+        
+        for result in results:
+            formated_result: SearchResult = {
+                "title": result.get("title", ""),
+                "content": result.get("content", ""),
+                "url": result.get("url", "None"),
+                "source": "Tavily"
+            }
+            cleaned_results.append(formated_result)
+        
+        return cleaned_results
+    
     except Exception as e:
-        return f"Search failed: {str(e)}"
-
+        print(f"Error executing Tavily search: {str(e)}")
+        return []
+    
+    
 if __name__ == "__main__":
     # Example usage
     # 确保上面 load_dotenv() 已经执行
     print(f"Current Key: {tavily_key[:5]}******") # 打印 Key 的前几位确认加载成功
     
     try:
-        result = web_search_Tavily.invoke({
+        result = asyncio.run(web_search_Tavily.ainvoke({
             "query": "What is LangGraph?",
-            "max_results": 3
-        })
+            "max_results": 1
+        }))
         print("\n--- Search Results ---\n")
         print(result)
     except Exception as e:

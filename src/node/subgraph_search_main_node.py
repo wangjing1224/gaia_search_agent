@@ -1,16 +1,26 @@
 from src.llm.model import get_llm
 from src.tools.tavily_tool import web_search_Tavily
+from src.tools.wikipedia_search_tool import wikipedia_search_tool
 from src.state.subgraph_search_state import SubgraphSearchState
 
 from langchain_core.messages import SystemMessage
 
 llm = get_llm()
 
-tools = [web_search_Tavily]
+tools = [web_search_Tavily, wikipedia_search_tool]
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]
-    reranked_results = state.get("reranked_results", "No search results yet.")
+    reranked_results = state.get("reranked_results", "")
+    
+    # 拼接rerank结果
+    reranked_results_str = ""
+    for i, res in enumerate(reranked_results):
+        title = res.get("title","")
+        url = res.get("url","")
+        content = res.get("content","")
+        source = res.get("source","")
+        reranked_results_str += f"{i+1}. Title: {title}\n   URL: {url}\n   Content: {content}\n   Source: {source}\n\n"
     
     SEARCH_SYSTEM_PROMPT = f"""
     You are a expert of searching the web for information to help answer user queries.
@@ -19,7 +29,7 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     2.Please read the search results carefully 
     3.Summarize the key points from the search results to help answer the user's query.
     Here are the reranked search results:
-    {reranked_results}
+    {reranked_results_str}
     """
     
     # 1. 准备系统提示和消息
