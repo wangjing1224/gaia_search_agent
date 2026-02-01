@@ -14,7 +14,7 @@ class WikipediaSearchArgs(BaseModel):
     top_k_results: int = Field(10, description="Number of entries to return.")
 
 @tool("wikipedia_search", args_schema=WikipediaSearchArgs)
-async def wikipedia_search(
+async def web_search_wikipedia(
     query: str, 
     lang: str = "en", 
     top_k_results: int = 10
@@ -28,9 +28,9 @@ async def wikipedia_search(
     Returns: 
         A list of SearchResult objects containing the search results from Wikipedia.
     """
-    return await asyncio.to_thread(wikipedia_search_sync, query, lang, top_k_results)
+    return await asyncio.to_thread(web_search_wikipedia_sync, query, lang, top_k_results)
 
-def wikipedia_search_sync(query: str, lang: str = "en", top_k_results: int = 10) -> List[SearchResult]:
+def web_search_wikipedia_sync(query: str, lang: str = "en", top_k_results: int = 10) -> List[SearchResult]:
     
     cleaned_results: List[SearchResult] = []
     
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     print("Testing Wikipedia Search Tool...")
     
     try:
-        result = asyncio.run(wikipedia_search.ainvoke({
+        result = asyncio.run(web_search_wikipedia.ainvoke({
             "query": "北京",
             "lang": "zh",
             "top_k_results": 2

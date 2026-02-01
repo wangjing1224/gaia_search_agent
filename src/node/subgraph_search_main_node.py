@@ -1,13 +1,13 @@
 from src.llm.model import get_llm
 from src.tools.tavily_tool import web_search_Tavily
-from src.tools.wikipedia_search_tool import wikipedia_search_tool
+from src.tools.wikipedia_search_tool import web_search_wikipedia
 from src.state.subgraph_search_state import SubgraphSearchState
 
 from langchain_core.messages import SystemMessage
 
 llm = get_llm()
 
-tools = [web_search_Tavily, wikipedia_search_tool]
+tools = [web_search_Tavily, web_search_wikipedia]
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]
