@@ -50,8 +50,8 @@ def subgraph_search_rerank_node(state: SubgraphSearchState):
     
     # 提取重新排序后的结果，只取前5个
     reranked_results = []
-    for reranked_item in reranked_list.reranked_passages[:5]:
-        reranked_results.append(reranked_item.meta)
+    for reranked_item in reranked_list[:5]:
+        reranked_results.append(reranked_item["meta"])
     
     return {
         "reranked_results": reranked_results,

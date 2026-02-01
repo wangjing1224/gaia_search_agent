@@ -26,12 +26,12 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
             # 根据工具名称调用相应的工具
             if tool_call["name"] == "web_search_Tavily":
                 # 异步调用工具
-                task = web_search_Tavily.ainvoke(tool_args.get("query",""))
+                task = web_search_Tavily.ainvoke(tool_args)
                 tasks.append(task)
                 tool_call_map.append(tool_call)
             
             elif tool_call["name"] == "web_search_wikipedia":
-                task = web_search_wikipedia.ainvoke(tool_args.get("query",""))
+                task = web_search_wikipedia.ainvoke(tool_args)
                 tasks.append(task)
                 tool_call_map.append(tool_call)
             

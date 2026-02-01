@@ -11,6 +11,9 @@ tools = [web_search_Tavily, web_search_wikipedia]
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]
+    
+    original_query = state.get("current_query", "")
+    
     reranked_results = state.get("reranked_results", [])
     
     # 拼接rerank结果
@@ -23,11 +26,12 @@ def subgraph_search_main_node(state: SubgraphSearchState):
         reranked_results_str += f"{i+1}. Title: {title}\n   URL: {url}\n   Content: {content}\n   Source: {source}\n\n"
     
     SEARCH_SYSTEM_PROMPT = f"""
-    You are a expert of searching the web for information to help answer user queries.
-    Your goal is to find the most relevant and accurate information from the web based on the user's query.
-    1.If the search results are not resilient enough, you may try another search with modified query or increased depth.
-    2.Please read the search results carefully 
-    3.Summarize the key points from the search results to help answer the user's query.
+    You are a web search expert who answers user questions by finding accurate and matching information. You can use two tools: Tavily (for real-time/up-to-date info like weather, latest data) and Wikipedia (for fixed/authoritative background info like concept definitions, historical facts). Follow these rules strictly for all questions, no matter how simple:
+    1. First confirm the core key elements in the user's question, especially the exact current time (year/month/day), as well as location, specific object and other key info;
+    2. Search with these key elements, and strictly check the search results: only keep the info that completely matches the key elements (no year/month/day/location deviation) and is not expired;
+    3. If the results are mismatched, expired or insufficient, re-search with modified keywords; if no valid info is found, directly state this;
+    4. Summarize the valid results as simply and directly as possible, only extract the core answer, no redundant content.
+    User's original query: {original_query}
     Here are the reranked search results:
     {reranked_results_str}
     """
