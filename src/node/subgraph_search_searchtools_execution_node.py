@@ -6,11 +6,17 @@ from src.state.search_result import SearchResult
 
 from src.tools.arxiv_search_tool import paper_search_arxiv
 from src.tools.bocha_search_tool import web_search_bocha
-from src.tools.jinreader_read_tool import web_read_jina
 from src.tools.pubmed_search_tool import paper_search_pubmed
 from src.tools.serpapi_search_tool import web_search_serpapi
 
 from typing import List
+
+tools_map = {
+    "paper_search_arxiv": paper_search_arxiv,
+    "web_search_bocha": web_search_bocha,
+    "paper_search_pubmed": paper_search_pubmed,
+    "web_search_serpapi": web_search_serpapi
+}
 
 async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
     messages = state["messages"]
@@ -29,29 +35,8 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
             tool_args = tool_call["args"]
             
             # 根据工具名称调用相应的工具
-            if tool_call["name"] == "paper_search_arxiv":
-                # 异步调用工具
-                task = paper_search_arxiv.ainvoke(tool_args)
-                tasks.append(task)
-                tool_call_map.append(tool_call)
-            
-            elif tool_call["name"] == "web_search_bocha":
-                task = web_search_bocha.ainvoke(tool_args)
-                tasks.append(task)
-                tool_call_map.append(tool_call)
-            
-            elif tool_call["name"] == "web_read_jina":
-                task = web_read_jina.ainvoke(tool_args)
-                tasks.append(task)
-                tool_call_map.append(tool_call)
-                
-            elif tool_call["name"] == "paper_search_pubmed":
-                task = paper_search_pubmed.ainvoke(tool_args)
-                tasks.append(task)
-                tool_call_map.append(tool_call)
-                
-            elif tool_call["name"] == "web_search_serpapi":
-                task = web_search_serpapi.ainvoke(tool_args)
+            if tool_call["name"] in tools_map:
+                task = tools_map[tool_call["name"]].ainvoke(tool_args)
                 tasks.append(task)
                 tool_call_map.append(tool_call)
             

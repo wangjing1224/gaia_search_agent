@@ -14,7 +14,7 @@ def route_to_search_tool(state: SubgraphSearchState):
     tool_name = last_message.tool_calls[0]["name"]
     
     # 根据工具名称路由到对应的工具节点
-    if tool_name == "paper_search_arxiv" or tool_name == "web_search_bocha" or tool_name == "web_read_jina" or tool_name == "paper_search_pubmed" or tool_name == "web_search_serpapi":
+    if tool_name == "paper_search_arxiv" or tool_name == "web_search_bocha" or tool_name == "paper_search_pubmed" or tool_name == "web_search_serpapi":
         return "search_tools_execution_node"
     else:
         return "tools"
