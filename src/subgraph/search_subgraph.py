@@ -2,7 +2,7 @@ from src.node.subgraph_search_main_node import subgraph_search_main_node
 from src.node.subgraph_search_rerank_node import subgraph_search_rerank_node
 from src.node.subgraph_search_searchtools_execution_node import subgraph_search_tools_execution_node
 from src.state.subgraph_search_state import SubgraphSearchState
-from src.tools.tavily_tool import web_search_Tavily
+from src.tools.jinreader_read_tool import web_read_jina 
 from src.route.subgraph_search_route_to_search_tool import route_to_search_tool
 
 from langgraph.graph import StateGraph, START, END
@@ -20,7 +20,7 @@ def create_subgraph_search_graph():
     workflow.add_node("subgraph_search_rerank", subgraph_search_rerank_node)
     
     #工具执行节点
-    tools = []
+    tools = [web_read_jina]
     tool_node = ToolNode(tools)
     workflow.add_node("tools", tool_node)
     
