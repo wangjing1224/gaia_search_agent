@@ -3,26 +3,10 @@ from src.node.subgraph_search_rerank_node import subgraph_search_rerank_node
 from src.node.subgraph_search_searchtools_execution_node import subgraph_search_tools_execution_node
 from src.state.subgraph_search_state import SubgraphSearchState
 from src.tools.tavily_tool import web_search_Tavily
+from src.route.subgraph_search_route_to_search_tool import route_to_search_tool
+
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
-
-def route_to_search_tool(state: SubgraphSearchState):
-    messages = state["messages"]
-    last_message = messages[-1]
-    
-    # 检查最后一条消息是否包含 ToolCall
-    if not last_message.tool_calls:
-        return END  # 没有 ToolCall，结束子图搜索
-    
-    # 有 ToolCall,获取工具名称
-    tool_name = last_message.tool_calls[0]["name"]
-    
-    # 根据工具名称路由到对应的工具节点
-    if tool_name == "web_search_Tavily" or tool_name == "web_search_wikipedia":
-        return "search_tools_execution_node"
-    else:
-        return "tools"
-    
 
 def create_subgraph_search_graph():
     # 1. 初始化 Graph Builder

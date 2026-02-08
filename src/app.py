@@ -37,14 +37,15 @@ async def chat_endpoint(request: Request):
         
         # 3. 提取最终答案
         # LangGraph 的最后一条消息通常是 AI 的回答
-        final_message = result["messages"][-1]
-        answer_content = final_message.content
+        final_message = result.get("final_answer", "")
+        
+        return JSONResponse(final_message)
 
-        # 4. 简单的后处理（符合比赛归一化要求，虽然评测会做，但我们最好先做）
-        answer_content = answer_content.strip() 
+        # # 4. 简单的后处理（符合比赛归一化要求，虽然评测会做，但我们最好先做）
+        # answer_content = answer_content.strip() 
 
-        # 5. 返回比赛要求的 JSON 格式: {"answer": "..."}
-        return JSONResponse(content={"answer": answer_content})
+        # # 5. 返回比赛要求的 JSON 格式: {"answer": "..."}
+        # return JSONResponse(content={"answer": answer_content})
 
     except Exception as e:
         print(f"Error processing request: {e}")

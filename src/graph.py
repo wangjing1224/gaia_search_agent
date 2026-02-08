@@ -7,23 +7,7 @@ from src.node.nodes import call_model
 from src.tools.search import get_tools
 from src.interface_tools.search_interface import search_interface
 from src.node.search_graph_wrapper_node import search_graph_wrapper_node
-
-def route_to_tool(state: AgentState):
-    messages = state["messages"]
-    last_message = messages[-1]
-    
-    # 检查最后一条消息是否包含 ToolCall
-    if not last_message.tool_calls:
-        return END  # 没有 ToolCall，结束对话
-    
-    # 有 ToolCall,获取工具名称
-    tool_name = last_message.tool_calls[0]["name"]
-    
-    # 根据工具名称路由到对应的工具节点
-    if tool_name == "search_interface":
-        return "search_subgraph_node"
-    
-    return END  # 默认结束
+from src.route.maingraph_route_to_too import route_to_tool
     
     
 def create_graph():

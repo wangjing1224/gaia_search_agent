@@ -1,13 +1,16 @@
 from src.llm.model import get_llm
-from src.tools.tavily_tool import web_search_Tavily
-from src.tools.wikipedia_search_tool import web_search_wikipedia
+from src.tools.arxiv_search_tool import paper_search_arxiv
+from src.tools.bocha_search_tool import web_search_bocha
+from src.tools.jinreader_read_tool import web_read_jina
+from src.tools.pubmed_search_tool import paper_search_pubmed
+from src.tools.serpapi_search_tool import web_search_serpapi
 from src.state.subgraph_search_state import SubgraphSearchState
 
 from langchain_core.messages import SystemMessage
 
 llm = get_llm()
 
-tools = [web_search_Tavily, web_search_wikipedia]
+tools = [paper_search_arxiv, web_search_bocha, web_read_jina, paper_search_pubmed, web_search_serpapi]
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]

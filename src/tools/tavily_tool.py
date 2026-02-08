@@ -9,15 +9,10 @@ from pydantic import BaseModel, Field
 
 from typing import List, Dict
 from src.state.search_result import SearchResult
+from src.config import TAVILY_API_KEY
 
-# 2. 在获取 Key 之前，先加载环境变量
-# 这会寻找当前目录或父级目录下的 .env 文件并加载
-load_dotenv()
-
-tavily_key = os.environ.get("TAVILY_API_KEY")
-
-# 3. 最好加个简单的检查，防止 Key 没配好时报错看不懂
-if not tavily_key:
+# 最好加个简单的检查，防止 Key 没配好时报错看不懂
+if not TAVILY_API_KEY:
     # 这里的 print 只是为了调试，实际生产中可以用 logging
     print("⚠️ 警告: 未找到 TAVILY_API_KEY，请检查 .env 文件")
 
@@ -49,7 +44,7 @@ def web_search_Tavily_sync(query: str ,max_results: int = 10) -> List[SearchResu
     
     # 实例化 TavilySearchResults
     tavil = TavilySearchResults(
-        tavily_api_key=tavily_key, # 注意：有些旧版本参数名是 api_key，新版建议用 tavily_api_key
+        tavily_api_key=TAVILY_API_KEY, # 注意：有些旧版本参数名是 api_key，新版建议用 tavily_api_key
         max_results=max_results
     )
     
@@ -81,10 +76,6 @@ def web_search_Tavily_sync(query: str ,max_results: int = 10) -> List[SearchResu
     
     
 if __name__ == "__main__":
-    # Example usage
-    # 确保上面 load_dotenv() 已经执行
-    print(f"Current Key: {tavily_key[:5]}******") # 打印 Key 的前几位确认加载成功
-    
     try:
         result = asyncio.run(web_search_Tavily.ainvoke({
             "query": "What is LangGraph?",
