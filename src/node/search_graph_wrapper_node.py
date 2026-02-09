@@ -21,13 +21,15 @@ async def search_graph_wrapper_node(state: AgentState):
     for tool_call in last_message.tool_calls:
         # 获取工具调用参数
         query = tool_call["args"].get("query", "")
+        background = tool_call["args"].get("background", "")
+        user_message = f"Search specifically for: {query}\nThe query background: {background}"
         tool_call_map.append(tool_call)
         
         if query:
             # 准备子图输入
             subgraph_input = {
                 "current_query": query,
-                "messages": [("user", f"Search specifically for: {query}")],
+                "messages": [("user", user_message)],
                 "search_results": [],  # 初始没有搜索结果，交给子图去
                 "rerank_results": [],  # 初始没有重排序结果，交给子图去
                 "summary": ""

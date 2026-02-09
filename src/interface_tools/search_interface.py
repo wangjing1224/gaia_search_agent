@@ -3,9 +3,11 @@ from pydantic import BaseModel, Field
 
 class search_interface_args(BaseModel):
     query: str = Field(..., description="The search query string. KEYWORDS only. Avoid conversational filler. Example: 'Tesla stock price 2023' instead of 'Please tell me what the stock price of Tesla was in 2023'.")
+    background: str = Field(default="", description="Optional background context to help understand the query.")
+    
     
 @tool('search_interface', args_schema=search_interface_args)
-def search_interface(query: str) -> str:
+def search_interface(query: str, background: str = "") -> str:
     """
     Primary web search tool. Use this for:
     1. Finding current events, news, or specific facts (dates, names).
@@ -22,4 +24,7 @@ def search_interface(query: str) -> str:
     
     # 这里我们不直接实现搜索逻辑，而是将查询传递给子图中的工具执行节点，由那里来调用具体的搜索工具。
     # 这样可以保持接口的简洁，同时利用子图的能力来处理复杂的工具调用和结果整合。
-    return ""
+    return NotImplementedError(
+        "CRITICAL ERROR: 'search_interface' is a virtual tool and should be routed to 'search_subgraph_node'. "
+        "Check your graph routing logic."
+    )
