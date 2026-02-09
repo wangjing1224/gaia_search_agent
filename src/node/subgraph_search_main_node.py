@@ -20,6 +20,19 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     
     original_query = state.get("current_query", "")
     
+    search_loop_count = state.get("search_loop_count", 0)
+    
+    if search_loop_count >= 5:
+        # 达到最大搜索循环次数，停止搜索
+        # 构造系统提示
+        force_stop_prompt = SystemMessage(content="You have reached the maximum number of search steps (3). Please summarize what you have found so far, even if it is incomplete. DO NOT search again.")
+        
+        # 重新 invoke，但不绑定工具，强迫它生成文本
+        response = llm.invoke([state["messages"][0]]+ messages+ [force_stop_prompt])
+        return{
+            "messages":[response],
+        }
+    
     reranked_results = state.get("reranked_results", [])
     
     # 拼接rerank结果

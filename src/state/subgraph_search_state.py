@@ -19,4 +19,6 @@ class SubgraphSearchState(MessagesState):
     
     reranked_results: List[SearchResult]
     
+    search_loop_count: int = 0
+    
     summary: str
