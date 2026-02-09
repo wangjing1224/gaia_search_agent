@@ -4,11 +4,9 @@ from langchain_core.messages import ToolMessage
 
 from src.state.state import State
 from src.tools.repl_tool import code_execution_repl
-from src.interface_tools.search_interface import search_interface
 
 tools_map = {
     "code_execution_repl": code_execution_repl,
-    "search_interface": search_interface
 }
 
 async def maingraph_asytools_execution_node(state: State):

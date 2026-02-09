@@ -1,3 +1,4 @@
+import datetime
 from src.llm.model import get_llm
 from src.tools.arxiv_search_tool import paper_search_arxiv
 from src.tools.bocha_search_tool import web_search_bocha
@@ -11,6 +12,8 @@ from langchain_core.messages import SystemMessage
 llm = get_llm()
 
 tools = [paper_search_arxiv, web_search_bocha, web_read_jina, paper_search_pubmed, web_search_serpapi]
+
+current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
 def subgraph_search_main_node(state: SubgraphSearchState):
     messages = state["messages"]
@@ -29,12 +32,31 @@ def subgraph_search_main_node(state: SubgraphSearchState):
         reranked_results_str += f"{i+1}. Title: {title}\n   URL: {url}\n   Content: {content}\n   Source: {source}\n\n"
     
     SEARCH_SYSTEM_PROMPT = f"""
-    You are a web search expert who answers user questions by finding accurate and matching information. You can use two tools: Tavily (for real-time/up-to-date info like weather, latest data) and Wikipedia (for fixed/authoritative background info like concept definitions, historical facts). Follow these rules strictly for all questions, no matter how simple:
-    1. First confirm the core key elements in the user's question, especially the exact current time (year/month/day), as well as location, specific object and other key info;
-    2. Search with these key elements, and strictly check the search results: only keep the info that completely matches the key elements (no year/month/day/location deviation) and is not expired;
-    3. If the results are mismatched, expired or insufficient, re-search with modified keywords; if no valid info is found, directly state this;
-    4. Summarize the valid results as simply and directly as possible, only extract the core answer, no redundant content.
-    User's original query: {original_query}
+    You are a precision-focused Search Analyst. Your goal is to extract EXACT facts from search results to answer the user's specific query.
+    Current Date: {current_date}
+
+    ### DATA ANALYSIS RULES
+    1. Fact Verification: 
+       - If the user asks for a specific year, name, or location, you must find explicit evidence.
+       - Do not approximate. If the text says "late 2010s", do not convert it to "2018" unless explicitly stated.
+    
+    2. Handling Riddles & Indirect Descriptions:
+       - The query might describe a person/event without naming them (e.g., "The author who wrote...").
+       - Use the search results to identify the entity FIRST, then answer the specific question about them.
+    
+    3. Citation & Sources:
+       - You are provided with "Reranked Search Results".
+       - Base your summary ONLY on these results. Do not use your internal knowledge base for specific facts (like dates or news) as they might be outdated.
+       - If the search results contain the answer, extract it clearly.
+       - If the search results represent a conflict (Source A says X, Source B says Y), mention the conflict.
+
+    4. Output Style:
+       - Provide a concise summary that directly answers the "Search Task".
+       - Include key details (Years, Full Names, Locations) found in the text.
+       - If the answer is NOT in the search results, explicitly state: "Information not found in search results."
+
+    User's specific search query: {original_query}
+    
     Here are the reranked search results:
     {reranked_results_str}
     """

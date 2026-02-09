@@ -2,28 +2,24 @@ from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
 class search_interface_args(BaseModel):
-    query: str = Field(..., description="The search query.")
-    depth: str = Field(
-        default="brief",
-        description="The depth of the search. Options are 'brief' or 'detailed'.",
-    )
+    query: str = Field(..., description="The search query string. KEYWORDS only. Avoid conversational filler. Example: 'Tesla stock price 2023' instead of 'Please tell me what the stock price of Tesla was in 2023'.")
     
 @tool('search_interface', args_schema=search_interface_args)
-def search_interface(query: str, depth: str = "brief") -> str:
+def search_interface(query: str) -> str:
     """
-    Perform a web search with specified depth.
-    When user's query is related to web search, use this tool to fetch relevant information.
-    Do not make up search results. Always use this tool for web search related queries.
+    Primary web search tool. Use this for:
+    1. Finding current events, news, or specific facts (dates, names).
+    2. Verifying information.
+    3. Answering questions about entities not in your internal knowledge.
+    
+    Use specific, high-value keywords.
     
     Args:
-        query: The search query.
-        depth: The depth of the search. Options are 'brief' or 'detailed'. Default is 'brief'.
+        query: The search query string. KEYWORDS only. Avoid conversational filler. Example: 'Tesla stock price 2023' instead of 'Please tell me what the stock price of Tesla was in 2023'.
     Returns:
         The search results.
     """
-    # This is a placeholder implementation.
-    # Replace with actual search logic as needed.
-    if depth == "detailed":
-        return f"Detailed search results for query: {query}"
-    else:
-        return f"Brief search results for query: {query}"
+    
+    # 这里我们不直接实现搜索逻辑，而是将查询传递给子图中的工具执行节点，由那里来调用具体的搜索工具。
+    # 这样可以保持接口的简洁，同时利用子图的能力来处理复杂的工具调用和结果整合。
+    return ""

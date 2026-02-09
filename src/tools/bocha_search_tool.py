@@ -1,6 +1,7 @@
 import asyncio
 import json
 import requests
+import httpx
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 from typing import List, Literal, Dict
@@ -26,7 +27,54 @@ async def web_search_bocha(query: str, max_results: int = 10, freshness: str = "
     Returns:
         The search results from Bocha.
     """
-    return await asyncio.to_thread(web_search_bocha_sync, query, max_results, freshness)
+    
+    url = "https://api.bochaai.com/v1/web-search"
+       
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {BOCHA_API_KEY}"
+    }
+    
+    payload = {
+        "query": query,
+        "count": max_results,
+        "freshness": freshness,
+        "summary": True
+    }
+    
+    cleaned_results: List[SearchResult] = []
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(url, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get("code") != 200 or not data.get("data"):
+                print(f"Bocha API returned error or empty: {data}")
+                return []
+            
+            web_pages = data["data"].get("webPages", {}).get("value", [])
+            
+            for page in web_pages:
+                formatted_result: SearchResult = {
+                    "title": page.get("name", "No Title"),
+                    "content": page.get("summary") or page.get("snippet", ""),
+                    "url": page.get("url", ""),
+                    "source": "Bocha"
+                }
+                cleaned_results.append(formatted_result)
+                
+            return cleaned_results
+        
+        else:
+            print(f"Bocha API request failed with status code {response.status_code}: {response.text}")
+            return []
+        
+    except Exception as e:
+        print(f"Error executing Bocha search: {str(e)}")
+        return []
 
 def web_search_bocha_sync(query: str, max_results: int = 10, freshness: str = "noLimit") -> List[SearchResult]:
     url = "https://api.bochaai.com/v1/web-search"    

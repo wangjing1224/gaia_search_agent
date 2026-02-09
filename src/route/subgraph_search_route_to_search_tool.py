@@ -18,7 +18,7 @@ def route_to_search_tool(state: SubgraphSearchState):
         return "search_tools_execution_node"
     
     elif tool_name == "web_read_jina":
-        return "web_read_tools_execution_node"
+        return "async_tools_execution_node"
     
     else:
         return "tools"

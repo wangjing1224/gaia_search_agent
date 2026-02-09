@@ -1,6 +1,7 @@
 import asyncio
 import requests
 import math
+import httpx
 from typing import List,Literal
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
@@ -30,7 +31,7 @@ class web_read_jina_args(BaseModel):
     )
 
 @tool('web_read_jina', args_schema=web_read_jina_args)
-async def web_read_jina(url, query, instruct) -> str:
+async def web_read_jina(url: str, query: str, instruct: InstructOptions = "Given a web search query, retrieve relevant passages that answer the query.") -> str:
     """Use Jina to read the content of a web page.
 
     Args:
@@ -39,8 +40,51 @@ async def web_read_jina(url, query, instruct) -> str:
     Returns:
         The content of the web page.
     """
-    return await asyncio.to_thread(web_read_jina_sync, url, query, instruct)
-
+    
+    if not url.startswith("http://") and not url.startswith("https://"):
+        print(f"Invalid URL: {url}. URL must start with http:// or https://")
+        return "Error: Invalid URL. URL must start with http:// or https://"
+    
+    cache_content = web_cache.get(url)
+    if cache_content:
+        print(f"Cache hit for URL: {url}")
+        full_content = cache_content
+        
+    else:
+        print(f"Cache miss for URL: {url}. Fetching content from Jina Reader.")
+        
+        jina_url = f"https://r.jina.ai/{url}"
+        
+        headers = {
+            "Authorization": f"Bearer {JINA_API_KEY}"
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.get(jina_url, headers=headers)
+                
+            if response.status_code == 200:
+                raw_content = response.text
+                full_content = clean_web_markdown_content(raw_content)
+                web_cache.set(url, full_content)  # 将内容存入缓存
+            elif response.status_code == 429:
+                print(f"Error: Rate limit exceeded for Jina Reader while accessing URL {url}")
+                return "Error: Rate limit exceeded for Jina Reader. Please try again later."
+            else:
+                print(f"Error: Failed to read page. Status Code: {response.status_code}, URL: {url}")
+                return f"Error: Failed to read page. Status Code: {response.status_code}, URL: {url}"
+        except Exception as e:
+            print(f"Error during Jina Reader request: {str(e)}, URL: {url}")
+            return f"Error: An exception occurred while reading the page. Details: {str(e)}, URL: {url}"
+        
+    paginate_content = paginate_web_content(full_content=full_content, query=query, page_size=PAGE_SIZE, instruct=instruct)
+    
+    result_content = (
+        f"SOURCE URL: {url}\n"
+        f"{paginate_content}"
+    )
+    
+    return result_content
+    
 def web_read_jina_sync(url: str, query: str, instruct: InstructOptions = "Given a web search query, retrieve relevant passages that answer the query.") -> str:
     """Use Jina to read the content of a web page.
 
