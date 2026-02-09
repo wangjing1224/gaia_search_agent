@@ -3,11 +3,12 @@ from src.state.state import AgentState
 from src.llm.model import get_llm
 from src.tools.search import get_tools
 from src.interface_tools.search_interface import search_interface
+from src.tools.repl_tool import code_execution_repl
 
 from langchain_core.messages import SystemMessage
 
 # 初始化 LLM 和 Tools
-tools = [search_interface]
+tools = [search_interface, code_execution_repl]
 llm = get_llm()
 
 ANGENt_SYSTEM_PROMPT = """

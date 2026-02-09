@@ -1,6 +1,7 @@
 import asyncio
 import requests
 import math
+from typing import List,Literal
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
 from src.config import JINA_API_KEY
@@ -8,14 +9,28 @@ from src.utils.web_paginate import paginate_web_content
 from src.utils.web_content_clean import clean_web_markdown_content
 from src.utils.web_pages_cache import web_cache
 
-PAGE_SIZE = 10000  # 每页内容的最大字符数，超过部分会被截断
+PAGE_SIZE = 3000  # 每页内容的最大字符数，超过部分会被截断
+
+InstructOptions = Literal[
+    "Given a web search query, retrieve relevant passages that answer the query.",
+    "Retrieve semantically similar text."
+]
 
 class web_read_jina_args(BaseModel):
     url: str = Field(..., description="The URL of the web page to read.Must start with http or https.")
-    page_number: int = Field(1, description="The page number to read. Default is 1. If the web page has multiple pages, you can specify which page to read. If the web page is a single page, this parameter will be ignored.")
+    query: str = Field(..., description="The search query to help extract relevant content from the web page. ")
+    instruct: InstructOptions = Field(
+        "Given a web search query, retrieve relevant passages that answer the query.",
+        description="The instruction to guide content extraction and pagination. "
+                    "Only two options are allowed: "
+                    "1. 'Given a web search query, retrieve relevant passages that answer the query.' "
+                    "2. 'Retrieve semantically similar text.' "
+                    "First option focuses on finding query's answer.Second option focuses on judging semantic similarity. "
+                    "Default is the first option."
+    )
 
 @tool('web_read_jina', args_schema=web_read_jina_args)
-async def web_read_jina(url: str, page_number: int = 1) -> str:
+async def web_read_jina(url, query, instruct) -> str:
     """Use Jina to read the content of a web page.
 
     Args:
@@ -24,9 +39,9 @@ async def web_read_jina(url: str, page_number: int = 1) -> str:
     Returns:
         The content of the web page.
     """
-    return await asyncio.to_thread(web_read_jina_sync, url, page_number)
+    return await asyncio.to_thread(web_read_jina_sync, url, query, instruct)
 
-def web_read_jina_sync(url: str, page_number: int = 1) -> str:
+def web_read_jina_sync(url: str, query: str, instruct: InstructOptions = "Given a web search query, retrieve relevant passages that answer the query.") -> str:
     """Use Jina to read the content of a web page.
 
     Args:
@@ -80,7 +95,7 @@ def web_read_jina_sync(url: str, page_number: int = 1) -> str:
             return f"Error: An exception occurred while reading the page. Details: {str(e)}, URL: {url}"
     
     # 对内容进行分页处理，返回指定页码的内容
-    paginate_content = paginate_web_content(full_content, page_number=page_number, page_size=PAGE_SIZE)
+    paginate_content = paginate_web_content(full_content=full_content, query=query, page_size=PAGE_SIZE, instruct=instruct)
     
     # 构造返回结果，包含当前页内容和分页信息
     result_content = (
@@ -95,10 +110,12 @@ if __name__ == "__main__":
     test_url = "https://en.wikipedia.org/wiki/Artificial_intelligence"
     result1 = asyncio.run(web_read_jina.ainvoke({
         "url": test_url,
+        "query": "What is artificial intelligence?",
         "page_number": 1
     }))
     result2 = asyncio.run(web_read_jina.ainvoke({
         "url": test_url,
+        "query": "What is artificial intelligence?",
         "page_number": 2
     }))
     print(result1) 

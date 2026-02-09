@@ -1,6 +1,7 @@
 from src.node.subgraph_search_main_node import subgraph_search_main_node
 from src.node.subgraph_search_rerank_node import subgraph_search_rerank_node
 from src.node.subgraph_search_searchtools_execution_node import subgraph_search_tools_execution_node
+from src.node.subgraph_search_webreadtools_execution_node import subgraph_search_webreadtools_execution_node
 from src.state.subgraph_search_state import SubgraphSearchState
 from src.tools.jinreader_read_tool import web_read_jina 
 from src.route.subgraph_search_route_to_search_tool import route_to_search_tool
@@ -20,11 +21,13 @@ def create_subgraph_search_graph():
     workflow.add_node("subgraph_search_rerank", subgraph_search_rerank_node)
     
     #工具执行节点
-    tools = [web_read_jina]
+    tools = []
     tool_node = ToolNode(tools)
     workflow.add_node("tools", tool_node)
     
     workflow.add_node("search_tools_execution_node", subgraph_search_tools_execution_node)
+    
+    workflow.add_node("web_read_tools_execution_node", subgraph_search_webreadtools_execution_node)
 
     # 3. 添加边 (Edges)
     # 起点 -> 子图搜索主节点
@@ -36,6 +39,7 @@ def create_subgraph_search_graph():
         route_to_search_tool,
         {
             "search_tools_execution_node": "search_tools_execution_node",
+            "web_read_tools_execution_node": "web_read_tools_execution_node",
             "tools": "tools",
             END: END,
         }
@@ -44,9 +48,11 @@ def create_subgraph_search_graph():
     # 工具执行节点 -> 重新排序节点
     workflow.add_edge("tools", "subgraph_search_rerank")
     workflow.add_edge("search_tools_execution_node", "subgraph_search_rerank")
-
     # 重新排序节点 -> 子图搜索主节点
     workflow.add_edge("subgraph_search_rerank", "subgraph_search_main")
+    
+    # web阅读工具执行节点 -> 子图搜索主节点
+    workflow.add_edge("web_read_tools_execution_node", "subgraph_search_main")
 
     # 4. 编译图
     graph = workflow.compile()

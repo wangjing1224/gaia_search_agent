@@ -1,35 +1,28 @@
 import math
+from src.utils.qwen_rerank import qwen_rerank_sync
 
-def paginate_web_content(full_content, page_number, page_size) -> str:
+def paginate_web_content(full_content, query: str, instruct: str, page_size: int = 3000) -> str:
     if not full_content:
         return "The url content is empty."
     
     total_length = len(full_content)
     total_pages = math.ceil(total_length / page_size)
     
-    if page_number < 1 or page_number > total_pages:
-        return f"Error: Page number {page_number} is out of range. Total pages: {total_pages}."
+    # 完整网页内容切片，构造rerank输入
+    documents_list = [full_content[i:i+page_size] for i in range(0, total_length, page_size)]
     
-    start_index = (page_number - 1) * page_size
-    end_index = min(start_index + page_size, total_length)
-    current_content = full_content[start_index:end_index]
+    # 使用Qwen模型进行rerank，确保重要内容优先展示
+    reranked_docs = qwen_rerank_sync(query,documents_list, instruct=instruct, top_n=5)
     
-    end_notice = ""
-    if page_number < total_pages:
-        end_notice = (
-        f"Content truncated.This is page {page_number} of {total_pages}.\n"
-        f"To read the next page, please call this tool again with page_number={page_number + 1}.\n"
-        f"Or you can set page_number to a specific page number to read that page directly."
+    # 拼接rerank后的内容，并添加分页信息
+    reranked_content = ""
+    for i, doc in enumerate(reranked_docs):
+        reranked_content += (
+            f"PAGE {i+1}:\n"
+            f"{doc}\n"
         )
-    else:
-        end_notice = "This is the last page of the content."
     
     return_content = (
-        f"TOTAL LENGTH: {total_length} characters\n"
-        f"PAGE NUMBER: {page_number}/{total_pages}\n"
-        f"CONTENT:\n"
-        f"{current_content}\n"
-        f"SYSTEM NOTICE: "
-        f"{end_notice}\n"
+        f"This web main content:\n{reranked_content}"
     )
     return return_content

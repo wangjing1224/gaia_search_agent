@@ -16,5 +16,7 @@ def route_to_tool(state: AgentState):
     # 根据工具名称路由到对应的工具节点
     if tool_name == "search_interface":
         return "search_subgraph_node"
+    elif tool_name == "code_execution_repl":
+        return "code_execution_subgraph_node"
     
     return END  # 默认结束

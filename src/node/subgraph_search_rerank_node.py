@@ -1,6 +1,7 @@
 from src.state.subgraph_search_state import SubgraphSearchState
 from langchain_core.messages import ToolMessage
 from src.llm.rerank_model import ranker_model_flash
+from src.utils.qwen_rerank import qwen_rerank_sync
 from flashrank import Ranker, RerankRequest
 import hashlib
 
@@ -35,24 +36,25 @@ def subgraph_search_rerank_node(state: SubgraphSearchState):
     
     # 无重复结果列表
     cleaned_results = list(unique_results.values())
+    
     # 构造rerank输入
     passage_list = [
-        {"id":i ,"text": res.get("content",""),"meta": res}
-        for i, res in enumerate(cleaned_results)
+        {"content": res.get("content",""), "meta": res}
+        for res in cleaned_results
     ]
     
-    rerankrequest = RerankRequest(
-        query = query,
-        passages = passage_list,
-    )
+    # 使用Qwen模型进行rerank
+    reranked_docs = qwen_rerank_sync(query, [p["content"] for p in passage_list], top_n=5)
     
-    reranked_list = ranker_model_flash.rerank(rerankrequest)
-    
-    # 提取重新排序后的结果，只取前5个
+    # 根据rerank结果重新构建reranked_results
     reranked_results = []
-    for reranked_item in reranked_list[:5]:
-        reranked_results.append(reranked_item["meta"])
+    for doc in reranked_docs:
+        for p in passage_list:
+            if p["content"] == doc:
+                reranked_results.append(p["meta"])
+                break
     
     return {
+        "search_results": "clear",  # 清空原有搜索结果
         "reranked_results": reranked_results,
     }
