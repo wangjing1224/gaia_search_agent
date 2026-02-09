@@ -13,31 +13,22 @@ Entrez.api_key = PUBMED_API_KEY
 
 
 class paper_search_pubmed_args(BaseModel):
-    query: str = Field(..., description="The search query.")
-    max_results: int = Field(15, description="The maximum number of search results to return. Default is 15.")
+    query: str = Field(..., description="Biomedical search terms. English is preferred.")
+    max_results: int = Field(10, description="Max results. Default is 10.")
 
 @tool('paper_search_pubmed', args_schema=paper_search_pubmed_args)
-async def paper_search_pubmed(query: str, max_results: int = 15) -> List[SearchResult]:
-    """Use PubMed to search for relevant academic papers.
-
-    Args:
-        query: The search query.
-        max_results: The maximum number of search results to return. Default is 15.
-    Returns:
-        The search results from PubMed.
+async def paper_search_pubmed(query: str, max_results: int = 10) -> List[SearchResult]:
+    """
+    [Biomedical Literature Search] Search for papers in PubMed (Life Sciences & Medicine).
+    
+    WHEN TO USE:
+    - Topics: Diseases, Drugs, Genes, Proteins, Clinical Trials, Biological mechanisms.
+    - Example queries: 'lung cancer treatment', 'CRISPR mechanism', 'COVID-19 vaccine efficacy'.
     """
     return await asyncio.to_thread(paper_search_pubmed_sync, query, max_results)
 
-def paper_search_pubmed_sync(query: str, max_results: int = 15) -> List[SearchResult]:
-    """Use PubMed to search for relevant academic papers.
+def paper_search_pubmed_sync(query: str, max_results: int = 10) -> List[SearchResult]:
 
-    Args:
-        query: The search query.
-        max_results: The maximum number of search results to return. Default is 15.
-    Returns:
-        The search results from PubMed.
-    """
-    
     cleaned_results: List[SearchResult] = []
     
     try:

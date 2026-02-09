@@ -18,27 +18,24 @@ InstructOptions = Literal[
 ]
 
 class web_read_jina_args(BaseModel):
-    url: str = Field(..., description="The URL of the web page to read.Must start with http or https.")
-    query: str = Field(..., description="The search query to help extract relevant content from the web page. ")
+    url: str = Field(..., description="The specific URL to scrape. MUST start with http:// or https://.")
+    query: str = Field(..., description="The original question or keyword to help rank the content relevance within the page.")
     instruct: InstructOptions = Field(
         "Given a web search query, retrieve relevant passages that answer the query.",
-        description="The instruction to guide content extraction and pagination. "
-                    "Only two options are allowed: "
-                    "1. 'Given a web search query, retrieve relevant passages that answer the query.' "
-                    "2. 'Retrieve semantically similar text.' "
-                    "First option focuses on finding query's answer.Second option focuses on judging semantic similarity. "
-                    "Default is the first option."
+        description="Instruction for the reader model."
     )
 
 @tool('web_read_jina', args_schema=web_read_jina_args)
 async def web_read_jina(url: str, query: str, instruct: InstructOptions = "Given a web search query, retrieve relevant passages that answer the query.") -> str:
-    """Use Jina to read the content of a web page.
-
-    Args:
-        url: The URL of the web page to read. Must start with http or https.
-        page_number: The page number to read. Default is 1. If the web page has multiple pages, you can specify which page to read. If the web page is a single page, this parameter will be ignored.
-    Returns:
-        The content of the web page.
+    """
+    [Web Page Reader] Deeply reads and extracts full content from a SPECIFIC URL.
+    
+    WHEN TO USE:
+    1. You have found a promising URL from a search tool (SerpApi/Bocha) and need to read its details.
+    2. The user explicitly provides a link to analyze.
+    
+    DO NOT USE:
+    - Do not use this for general keyword searching. It requires a valid URL.
     """
     
     if not url.startswith("http://") and not url.startswith("https://"):
@@ -86,14 +83,6 @@ async def web_read_jina(url: str, query: str, instruct: InstructOptions = "Given
     return result_content
     
 def web_read_jina_sync(url: str, query: str, instruct: InstructOptions = "Given a web search query, retrieve relevant passages that answer the query.") -> str:
-    """Use Jina to read the content of a web page.
-
-    Args:
-        url: The URL of the web page to read. Must start with http or https.
-        page_number: The page number to read. Default is 1. If the web page has multiple pages, you can specify which page to read. If the web page is a single page, this parameter will be ignored.
-    Returns:
-        The content of the web page.
-    """
     
     # 简单的输入验证，确保 URL 以 http 或 https 开头
     if not url.startswith("http://") and not url.startswith("https://"):

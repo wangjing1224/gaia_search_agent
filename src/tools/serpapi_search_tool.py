@@ -7,27 +7,32 @@ from src.state.search_result import SearchResult
 from src.config import SERPAPI_API_KEY
 
 class web_search_serpapi_args(BaseModel):
-    query: str = Field(..., description="The search query.")
-    max_results: int = Field(10, description="The maximum number of search results to return. Default is 10.")
-    engine: Literal["google", "bing","google_scholar"] = Field("google", description="The search engine to use. Default is google. google: Google Search; bing: Bing Search; google_scholar: Google Scholar.Select 'google_scholar' to search for academic papers.'google' and 'bing' are for general web search.")
+    query: str = Field(..., description="The search query. Use specific keywords.")
+    max_results: int = Field(10, description="Number of results. Default 10.")
+    engine: Literal["google", "bing","google_scholar"] = Field(
+        "google", 
+        description="Search engine choice. Use 'google' for general knowledge, news, and facts. Use 'google_scholar' ONLY as a backup for academic papers if Arxiv/Pubmed fails.")
     country:Literal["cn","us","uk"] = Field("us", description="The country to search in. Default is us.us: United States; uk: United Kingdom; cn: China.")
     time_range: str = Field(
         None, 
-        description="Optional time range. Examples: 'qdr:y' (past year), 'cdr:1,cd_min:2020,cd_max:2022' (specific years).Default is None, which means no time filter. Notice:Static facts are usually not affected by time range, while news and recent events are more likely to be influenced by time range. For general web search, you can set an appropriate time range to get more relevant results. For academic paper search using google_scholar, it's often useful to set a time range to find the most recent research."
-    )
+        description="CRITICAL for time-sensitive queries. "
+                    "Formats: 'qdr:d' (past 24h), 'qdr:w' (past week), 'qdr:m' (past month), 'qdr:y' (past year). "
+                    "Example: for 'recent AI news', use 'qdr:w'. For historical facts, leave None."
+        )
     
 @tool('web_search_serpapi', args_schema=web_search_serpapi_args)
 async def web_search_serpapi(query: str, max_results: int = 10, engine: str = "google", country: str = "us", time_range: Optional[str] = None) -> List[SearchResult]:
-    """Use SerpAPI to search the web for relevant information.
-
-    Args:
-        query: The search query.
-        max_results: The maximum number of search results to return. Default is 10.
-        engine: The search engine to use. Default is google. google: Google Search; bing: Bing Search; google_scholar: Google Scholar.Select 'google_scholar' to search for academic papers.'google' and 'bing' are for general web search.
-        country: The country to search in. Default is us.us: United States; uk: United Kingdom; cn: China.
-        time_range: Optional time range. Examples: 'qdr:y' (past year), 'cdr:1,cd_min:2020,cd_max:2022' (specific years).Default is None, which means no time filter. Notice:Static facts are usually not affected by time range, while news and recent events are more likely to be influenced by time range. For general web search, you can set an appropriate time range to get more relevant results. For academic paper search using google_scholar, it's often useful to set a time range to find the most recent research.
-    Returns:
-        The search results from SerpAPI.
+    """
+    [General Web Search] The PRIMARY tool for finding real-world facts, news, events, and general knowledge.
+    
+    WHEN TO USE:
+    1. Questions about people, companies, historical events, or locations.
+    2. News or recent updates (MUST use 'time_range').
+    3. verifying specific facts (dates, names).
+    
+    DO NOT use for:
+    - Deep reading of a single URL (use web_read_jina).
+    - Complex code execution.
     """
     return await asyncio.to_thread(web_search_serpapi_sync, query, max_results, engine, country, time_range)
 

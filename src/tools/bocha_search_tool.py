@@ -9,23 +9,22 @@ from src.state.search_result import SearchResult
 from src.config import BOCHA_API_KEY
 
 class web_search_bocha_args(BaseModel):
-    query: str = Field(..., description="The search query.")
-    max_results: int = Field(10, description="The maximum number of search results to return. Default is 10.")
+    query: str = Field(..., description="The search query string.")
+    max_results: int = Field(10, description="Max results count. Default is 10.")
     freshness: Literal["noLimit", "oneDay", "oneWeek", "oneMonth", "oneYear"] = Field(
         "noLimit",
-        description="noLimit: No time limit; oneDay: Last 24 hours; oneWeek: Last 7 days; oneMonth: Last one month; oneYear: Last one year. Default is noLimit."
+        description="Time filter. Use 'oneDay' or 'oneWeek' for breaking news; 'noLimit' for general info."
     )
 
 @tool('web_search_bocha', args_schema=web_search_bocha_args)
 async def web_search_bocha(query: str, max_results: int = 10, freshness: str = "noLimit") -> List[SearchResult]:
-    """Use Bocha to search the web for relevant information.
-
-    Args:
-        query: The search query.
-        max_results: The maximum number of search results to return. Default is 10.
-        freshness: noLimit: No time limit; oneDay: Last 24 hours; oneWeek: Last 7 days; oneMonth: Last one month; oneYear: Last one year. Default is noLimit.noLimit is the first option,search algorithm will adjust the time range of search results based on the query automatically.
-    Returns:
-        The search results from Bocha.
+    """
+    [Alternative Web Search] A powerful search engine capable of retrieving high-quality web content.
+    
+    WHEN TO USE:
+    1. Specifically effective for CHINESE language queries or entities related to China.
+    2. As a fallback or complementary search when SerpApi results are insufficient.
+    3. When you need a second opinion from a different search index.
     """
     
     url = "https://api.bochaai.com/v1/web-search"

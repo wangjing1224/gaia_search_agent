@@ -67,6 +67,14 @@ def subgraph_search_main_node(state: SubgraphSearchState):
        - Provide a concise summary that directly answers the "Search Task".
        - Include key details (Years, Full Names, Locations) found in the text.
        - If the answer is NOT in the search results, explicitly state: "Information not found in search results."
+    
+    5. TOOL SELECTION STRATEGY
+    - General Facts/News: Use `web_search_serpapi` (Check `time_range` if date is important).
+    - Chinese/Local Info: Use `web_search_bocha`.
+    - Deep Dive: If a search result title looks perfect but the snippet is too short, use `web_read_jina` on that URL.
+    - Academic: 
+      - CS/AI/Math/Physics -> `paper_search_arxiv` (English Query).
+      - Bio/Medicine -> `paper_search_pubmed`.
 
     User's specific search query: {original_query}
     

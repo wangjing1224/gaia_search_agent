@@ -19,7 +19,7 @@ FORBIDDEN_KEYWORDS = [
 ]
 
 class code_execution_repl_args(BaseModel):
-    code: str = Field(..., description="The Python code to execute")
+    code: str = Field(..., description="Valid Python code to execute. Must include print() to output results.")
     
 # 这个工具的设计目标是提供一个安全的环境来执行 Python 代码，适用于需要动态计算或处理数据的场景。
 # 通过限制可用的库和内置函数，并禁止使用危险的关键词，我们可以最大程度地降低安全风险。
@@ -123,12 +123,16 @@ def run_code_execution_with_timeout(code: str, timeout: int = 5) -> str:
 # 这个函数是工具的主入口，使用 asyncio 来管理异步执行，并调用 run_code_execution_with_timeout 来执行代码。
 @tool('code_execution_repl', args_schema=code_execution_repl_args)
 async def code_execution_repl(code: str) -> str:
-    """Execute Python code in a REPL environment and return the output or error message.
-
-    Args:
-        code: The Python code to execute.
-    Returns:
-        The output of the executed code or any error messages.
+    """
+    [Python REPL] Execute Python code for calculation or logic processing.
+    
+    WHEN TO USE:
+    1. Precise mathematical calculations (dates, huge numbers, physics formulas).
+    2. Data processing that implies logic (e.g., sorting a list of dates found in search).
+    
+    SAFETY:
+    - Only standard libraries (math, datetime, re) are allowed.
+    - No file I/O or external network access allowed in this sandbox.
     """
     
     try:
