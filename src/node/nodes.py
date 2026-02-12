@@ -39,6 +39,11 @@ ANGENt_SYSTEM_PROMPT = """You are an advanced Research Agent specializing in com
    - Be direct and precise.
    - For numerical answers (years, amounts), provide the exact number.
    - For names, provide the full name as requested.
+
+5. Calculation & Logic:
+   - For ANY math calculation (ages, time differences, currency conversion), you MUST use the `code_execution_repl` tool.
+   - DO NOT calculate mentally. Mental math is strictly forbidden.
+   - Example: To calculate age, write python code: `print(2024 - 1956)`.
 """
 
 def call_model(state: AgentState):

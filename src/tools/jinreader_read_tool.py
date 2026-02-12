@@ -19,7 +19,7 @@ InstructOptions = Literal[
 
 class web_read_jina_args(BaseModel):
     url: str = Field(..., description="The specific URL to scrape. MUST start with http:// or https://.")
-    query: str = Field(..., description="The original question or keyword to help rank the content relevance within the page.")
+    query: str = Field(..., description="The original question or keyword should focus on web content. This helps the reader extract relevant information.")
     instruct: InstructOptions = Field(
         "Given a web search query, retrieve relevant passages that answer the query.",
         description="Instruction for the reader model."

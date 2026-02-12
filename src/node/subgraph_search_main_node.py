@@ -13,9 +13,9 @@ llm = get_llm()
 
 tools = [paper_search_arxiv, web_search_bocha, web_read_jina, paper_search_pubmed, web_search_serpapi]
 
-current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-
 def subgraph_search_main_node(state: SubgraphSearchState):
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    
     messages = state["messages"]
     
     original_query = state.get("current_query", "")
@@ -34,6 +34,12 @@ def subgraph_search_main_node(state: SubgraphSearchState):
         }
     
     reranked_results = state.get("reranked_results", [])
+    
+    no_rerank_prompt = ""
+    # 如果已经搜索过了，但是没有rerank结果，提示模型换个搜索关键词或者换个角度继续搜索
+    if search_loop_count > 0 and not reranked_results:
+        no_rerank_prompt = "Your previous search did not yield useful results. Please try a different search query or approach to find relevant information."
+        
     
     # 拼接rerank结果
     reranked_results_str = ""
