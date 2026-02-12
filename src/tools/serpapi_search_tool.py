@@ -110,6 +110,7 @@ def web_search_serpapi_sync(query: str, max_results: int = 10, engine: str = "go
                 for result in results["organic_results"]:
                     title = result.get("title", "No Title")
                     formatted_result: SearchResult = {
+                        "query": query,
                         "title": title,
                         "content": result.get("snippet", ""),
                         "url": result.get("link", ""),

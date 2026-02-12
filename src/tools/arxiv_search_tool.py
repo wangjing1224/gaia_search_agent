@@ -53,6 +53,7 @@ def paper_search_arxiv_sync(query: str, max_results: int = 10) -> List[SearchRes
             
             # 这里的 result 结构取决于 ArxivRetriever 的实现
             formatted_result: SearchResult = {
+                "query": query,
                 "title": paper_title,
                 "content": paper_content,
                 "url": paper_url,

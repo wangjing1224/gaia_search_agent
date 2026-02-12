@@ -63,7 +63,7 @@ async def subgraph_search_tools_execution_node(state: SubgraphSearchState):
                         "source": "System"
                     }
                     current_results.append(error_result)
-                    fake_tool_content = f"Tool {tool_call['name']} execution failed."
+                    fake_tool_content = f"Tool {tool_call['name']} execution failed.Search query: {tool_call['args'].get('query','')}. Error: {str(result)}"
                 else:
                     # 正常结果处理
                     if isinstance(result, list):

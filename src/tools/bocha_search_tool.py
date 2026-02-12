@@ -58,6 +58,7 @@ async def web_search_bocha(query: str, max_results: int = 10, freshness: str = "
             
             for page in web_pages:
                 formatted_result: SearchResult = {
+                    "query": query,
                     "title": page.get("name", "No Title"),
                     "content": page.get("summary") or page.get("snippet", ""),
                     "url": page.get("url", ""),
@@ -106,6 +107,7 @@ def web_search_bocha_sync(query: str, max_results: int = 10, freshness: str = "n
             
             for page in web_pages:
                 formatted_result: SearchResult = {
+                    "query": query,
                     "title": page.get("name", "No Title"),
                     "content": page.get("summary") or page.get("snippet", ""),
                     "url": page.get("url", ""),

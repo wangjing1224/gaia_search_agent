@@ -93,6 +93,7 @@ def paper_search_pubmed_sync(query: str, max_results: int = 10) -> List[SearchRe
                 final_content = f"Published in {year} ({journal_name}). Abstract: {article_text[:800]}"
                 
                 formatted_result: SearchResult = {
+                    "query": query,
                     "title": article_title,
                     "content": final_content,
                     "url": article_url,
