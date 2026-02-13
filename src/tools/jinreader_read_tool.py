@@ -28,14 +28,14 @@ class web_read_jina_args(BaseModel):
 @tool('web_read_jina', args_schema=web_read_jina_args)
 async def web_read_jina(url: str, query: str, instruct: InstructOptions = "Given a web search query, retrieve relevant passages that answer the query.") -> str:
     """
-    [Web Page Reader] Deeply reads and extracts full content from a SPECIFIC URL.
+    [DEEP READING] Reads the FULL content of a specific URL.
     
-    WHEN TO USE:
-    1. You have found a promising URL from a search tool (SerpApi/Bocha) and need to read its details.
-    2. The user explicitly provides a link to analyze.
+    CRITICAL TRIGGER:
+    - Use this IMMEDIATELY if a search result title looks perfect (e.g., "List of Nobel Winners 2024") but the snippet is truncated or doesn't contain the specific answer.
+    - Use this to extract long lists, detailed biographies, or specific data points buried in a page.
     
-    DO NOT USE:
-    - Do not use this for general keyword searching. It requires a valid URL.
+    NOTICE:
+    - Do NOT use for general searching. You must have a valid URL from a previous search step.
     """
     
     if not url.startswith("http://") and not url.startswith("https://"):

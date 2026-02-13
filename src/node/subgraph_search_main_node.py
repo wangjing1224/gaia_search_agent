@@ -28,14 +28,27 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     rerank_history_str = "" #历史rerank结果记录，初始为空,同样也表示历史搜索记录
     current_time_prompt = f"The current date is {current_date}." #当前时间提示，提示模型当前的时间，帮助模型判断信息是否过时
     tools_selection_prompt = """
-    5. TOOL SELECTION STRATEGY
-    - General Facts/News: Use `web_search_serpapi` (Check `time_range` if date is important).
-    - Chinese/Local Info: Use `web_search_bocha`.
-    - Deep Dive: If a search result title looks perfect but the snippet is too short, use `web_read_jina` on that URL.
-    - Academic: 
-      - CS/AI/Math/Physics -> `paper_search_arxiv` (English Query).
-      - Bio/Medicine -> `paper_search_pubmed`.
-    """ 
+    ### 5. TOOL SELECTION STRATEGY (STRICT ORDER)
+    
+    PHASE 1: BROAD SEARCH
+    - ALWAYS start with `web_search_bocha`. It is your primary radar.
+    - If the query is about a Chinese entity, use Chinese keywords.
+    - If the query is International/Technical, try English keywords.
+
+    PHASE 2: DEEP READING (The "Jina" Trigger)
+    - Look at the `web_search_bocha` results.
+    - Is there a result where the Title matches the user's intent, but the Snippet is cut off?
+    - YES -> Call `web_read_jina` on that specific URL immediately.
+    - Do NOT search again if you have a promising URL waiting to be read.
+
+    PHASE 3: PRECISION FALLBACK (The "SerpApi" Trigger)
+    - If `web_search_bocha` returns NOTHING relevant after 1-2 attempts:
+    - Switch to `web_search_serpapi`.
+    - CRITICAL: Translate the query to English before calling SerpApi for international topics.
+    
+    PHASE 4: ACADEMIC SEARCH
+    - Only use `paper_search_arxiv` (CS/Math/Physics) or `paper_search_pubmed` (Bio/Med) if the user explicitly asks for "papers", "studies", or "scientific research".
+    """
     
     # 获取最后一次rerank结果。如果没有rerank结果或者rerank当前的loop数和搜索循环数不一致，说明当前没有有效的rerank结果
     if not reranked_results or reranked_results.get("loop", -1) != search_loop_count:
@@ -72,28 +85,27 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     
     # 构造系统提示，包含当前时间提示、没有rerank结果的提示（如果有的话）、历史rerank结果记录（如果有的话）以及原始查询，告诉模型当前的搜索状态和历史搜索记录，帮助模型调整搜索策略
     SEARCH_SYSTEM_PROMPT = f"""
-    You are a precision-focused Search Analyst. Your goal is to extract EXACT facts from search results to answer the user's specific query.
+    You are a Tier-1 Investigative Reporter. Your mission is to find EXACT facts for a specific query.
     {current_time_prompt}
     
-    User's specific search query: {original_query}
+    User's Search Task: {original_query}
     
-    Here are the historical search results:
+    History of your investigation:
     {rerank_history_str}
 
-    ### DATA ANALYSIS RULES
-    1. Fact Verification: 
-       - If the user asks for a specific year, name, or location, you must find explicit evidence.
-       - Do not approximate. If the text says "late 2010s", do not convert it to "2018" unless explicitly stated.
-    
-    2. Handling Riddles & Indirect Descriptions:
-       - The query might describe a person/event without naming them (e.g., "The author who wrote...").
-       - Use the search results to identify the entity FIRST, then answer the specific question about them.
-    
-    3. Citation & Sources:
-       - You are provided with "Reranked Search Results".
-       - Base your summary ONLY on these results. Do not use your internal knowledge base for specific facts (like dates or news) as they might be outdated.
-       - If the search results contain the answer, extract it clearly.
-       - If the search results represent a conflict (Source A says X, Source B says Y), mention the conflict.
+    ### EXECUTION PROTOCOL
+    1. **Analyze the Gap**: Look at the history. What did you try? Why did it fail?
+       - If previous results were irrelevant -> CHANGE your keywords. Simplify them. Use English if Chinese failed.
+       - If you found a link but no content -> USE `web_read_jina`.
+       
+    2. **Fact Extraction (The Gold Standard)**:
+       - You answer MUST be grounded in the "Reranked Search Results".
+       - If the text says "born in the late 90s", DO NOT guess "1998". Search specifically for "birth year of [Name]".
+       - Dealing with Aliases: If the user asks about "The company founded by X", and search says "X founded Alibaba", your next step (if needed) is to verify details about Alibaba.
+
+    3. **Stop Condition**:
+       - If you found the EXACT answer to the `original_query`, output the Summary immediately.
+       - If you have tried 3 different search angles/tools and found nothing, output "Information not found". Do not loop forever.
 
     4. Output Style:
        - Provide a concise summary that directly answers the "Search Task".

@@ -7,7 +7,7 @@ from src.state.search_result import SearchResult
 from src.config import SERPAPI_API_KEY
 
 class web_search_serpapi_args(BaseModel):
-    query: str = Field(..., description="The search query. Use specific keywords.")
+    query: str = Field(..., description="The search query. MUST use specific, high-entropy keywords.")
     max_results: int = Field(10, description="Number of results. Default 10.")
     engine: Literal["google", "bing","google_scholar"] = Field(
         "google", 
@@ -23,16 +23,16 @@ class web_search_serpapi_args(BaseModel):
 @tool('web_search_serpapi', args_schema=web_search_serpapi_args)
 async def web_search_serpapi(query: str, max_results: int = 10, engine: str = "google", country: str = "us", time_range: Optional[str] = None) -> List[SearchResult]:
     """
-    [General Web Search] The PRIMARY tool for finding real-world facts, news, events, and general knowledge.
+    [PRECISION SEARCH - BACKUP] A Google Search wrapper. Use SPARINGLY (High Cost).
     
-    WHEN TO USE:
-    1. Questions about people, companies, historical events, or locations.
-    2. News or recent updates (MUST use 'time_range').
-    3. verifying specific facts (dates, names).
+    WHEN TO USE (Specific Triggers):
+    1. FALLBACK: When 'web_search_bocha' returns 0 results or irrelevant info.
+    2. VERIFICATION: When you need to cross-check a fact (e.g., a specific date) found elsewhere.
+    3. ENGLISH SPECIFIC: When searching for obscure Western entities, academic papers, or foreign news not indexed in China.
     
-    DO NOT use for:
-    - Deep reading of a single URL (use web_read_jina).
-    - Complex code execution.
+    BEST PRACTICE:
+    - Translate Chinese queries to English before using this tool for international topics.
+    - Use 'time_range' if the question implies a specific timeframe.
     """
     return await asyncio.to_thread(web_search_serpapi_sync, query, max_results, engine, country, time_range)
 

@@ -19,12 +19,16 @@ class web_search_bocha_args(BaseModel):
 @tool('web_search_bocha', args_schema=web_search_bocha_args)
 async def web_search_bocha(query: str, max_results: int = 10, freshness: str = "noLimit") -> List[SearchResult]:
     """
-    [Alternative Web Search] A powerful search engine capable of retrieving high-quality web content.
+    [PRIMARY SEARCH TOOL] The DEFAULT search engine for this agent.
     
-    WHEN TO USE:
-    1. Specifically effective for CHINESE language queries or entities related to China.
-    2. As a fallback or complementary search when SerpApi results are insufficient.
-    3. When you need a second opinion from a different search index.
+    CAPABILITIES:
+    1. Supports BOTH Chinese and English queries perfectly.
+    2. Good for retrieving general knowledge, entity definitions, and news.
+    3. Use this tool FIRST for almost all queries unless you have a specific reason to use others.
+    
+    STRATEGY:
+    - If the user's question involves Chinese entities, use Chinese keywords.
+    - If the initial search fails, try translating keywords to English/Chinese and search again.
     """
     
     url = "https://api.bochaai.com/v1/web-search"
