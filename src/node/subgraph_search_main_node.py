@@ -24,6 +24,9 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     
     reranked_results = state.get("reranked_results", [])
     
+    # 获取最后一次rerank结果。如果没有rerank结果或者rerank当前的loop数和搜索循环数不一致，说明当前没有有效的rerank结果
+    latest_rerank_result = reranked_results[-1] if reranked_results else {}
+    
     no_rerank_prompt = "" #没有rerank结果的提示语，初始为空
     rerank_history_str = "" #历史rerank结果记录，初始为空,同样也表示历史搜索记录
     current_time_prompt = f"The current date is {current_date}." #当前时间提示，提示模型当前的时间，帮助模型判断信息是否过时
@@ -51,7 +54,7 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     """
     
     # 获取最后一次rerank结果。如果没有rerank结果或者rerank当前的loop数和搜索循环数不一致，说明当前没有有效的rerank结果
-    if not reranked_results or reranked_results.get("loop", -1) != search_loop_count:
+    if not reranked_results or latest_rerank_result.get("loop", -1) != search_loop_count:
         # 如果是第一次搜索,即search_loop_count为0，说明还没有进行过搜索，更没有rerank结果，此时应该提示模型开始第一次搜索
         if not reranked_results:
             #第一次搜索，提示模型分析用户查询，想出一个精准的搜索查询来寻找相关信息
@@ -62,7 +65,7 @@ def subgraph_search_main_node(state: SubgraphSearchState):
                 no_rerank_prompt = "Your previous search did not yield useful results. You must review the search tool histories to analyze the search query. Please try a different search query or approach to find relevant information."
         else:
             # 如果有rerank结果，但rerank当前的loop数和搜索循环数不一致，说明上一次搜索没有得到有用的结果，需要提示模型换个搜索关键词或者换个角度继续搜索
-            if reranked_results.get("loop", -1) != search_loop_count:
+            if latest_rerank_result.get("loop", -1) != search_loop_count:
                 no_rerank_prompt = "Your previous search did not yield useful results. You must review the search tool histories and the the historical search results to analyze the search query. Please try a different search query or approach to find relevant information."
 
     # 如果有历史rerank结果，拼接成字符串，作为提示语的一部分，告诉模型之前搜索过什么，得到过什么结果，帮助模型调整搜索策略

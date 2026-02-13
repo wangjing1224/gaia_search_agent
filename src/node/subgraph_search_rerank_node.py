@@ -29,7 +29,7 @@ def subgraph_search_rerank_node(state: SubgraphSearchState):
     if not  serach_results:
         return {
             "search_results": "clear",  # 清空原有搜索结果
-            "reranked_results": rerank_results,# 这里即使没有搜索结果，也要更新rerank_results，告诉主节点这一轮没有有用的搜索结果
+            "reranked_results": [rerank_results],# 这里即使没有搜索结果，也要更新rerank_results，告诉主节点这一轮没有有用的搜索结果
             "search_loop_count": search_loop_count
         }
     
@@ -109,6 +109,6 @@ def subgraph_search_rerank_node(state: SubgraphSearchState):
     
     return {
         "search_results": "clear",  # 清空原有搜索结果
-        "reranked_results": rerank_results,
+        "reranked_results": [rerank_results],
         "search_loop_count": search_loop_count
     }

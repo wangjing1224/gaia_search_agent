@@ -2,14 +2,14 @@ import asyncio
 
 from langchain_core.messages import ToolMessage
 
-from src.state.state import State
+from src.state.state import AgentState
 from src.tools.repl_tool import code_execution_repl
 
 tools_map = {
     "code_execution_repl": code_execution_repl,
 }
 
-async def maingraph_asytools_execution_node(state: State):
+async def maingraph_asytools_execution_node(state: AgentState):
     messages = state["messages"]
     last_message = messages[-1]
     
