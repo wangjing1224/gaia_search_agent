@@ -79,8 +79,6 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     
     Here are the historical search results:
     {rerank_history_str}
-    
-    {no_rerank_prompt}
 
     ### DATA ANALYSIS RULES
     1. Fact Verification: 
@@ -112,12 +110,12 @@ def subgraph_search_main_node(state: SubgraphSearchState):
         force_stop_system_prompt = SystemMessage(content=force_stop_prompt+SEARCH_SYSTEM_PROMPT)
         
         # 重新 invoke，但不绑定工具，强迫它生成文本
-        response = llm.invoke([state["messages"][0]]+ messages+ [force_stop_system_prompt])
+        response = llm.invoke([force_stop_system_prompt]+messages)
         return{
             "messages":[response],
         }
     
-    SEARCH_SYSTEM_PROMPT += tools_selection_prompt
+    SEARCH_SYSTEM_PROMPT += tools_selection_prompt + "\n\n" + no_rerank_prompt
     
     # 1. 准备系统提示和消息
     system_message = SystemMessage(content=SEARCH_SYSTEM_PROMPT)

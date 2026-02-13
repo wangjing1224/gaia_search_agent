@@ -21,4 +21,4 @@ def route_to_search_tool(state: SubgraphSearchState):
         return "web_read_tools_execution_node"
     
     else:
-        return "tools"
+        return END # 未知工具，结束子图搜索

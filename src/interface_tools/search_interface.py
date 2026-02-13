@@ -15,11 +15,6 @@ def search_interface(query: str, background: str = "") -> str:
     3. Answering questions about entities not in your internal knowledge.
     
     Use specific, high-value keywords.
-    
-    Args:
-        query: The search query string. KEYWORDS only. Avoid conversational filler. Example: 'Tesla stock price 2023' instead of 'Please tell me what the stock price of Tesla was in 2023'.
-    Returns:
-        The search results.
     """
     
     # 这里我们不直接实现搜索逻辑，而是将查询传递给子图中的工具执行节点，由那里来调用具体的搜索工具。

@@ -3,7 +3,7 @@ from src.utils.qwen_rerank import qwen_rerank_sync
 
 def paginate_web_content(full_content, query: str, instruct: str, page_size: int = 3000) -> str:
     
-    overlap_size = 500  # 页面重叠部分的大小，确保上下文连续
+    overlap_size = 800  # 页面重叠部分的大小，确保上下文连续
     
     if not full_content:
         return "The url content is empty."
