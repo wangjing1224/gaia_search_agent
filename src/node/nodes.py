@@ -1,7 +1,6 @@
 # src/node/nodes.py
 from src.state.state import AgentState
 from src.llm.model import get_llm
-from src.tools.search import get_tools
 from src.interface_tools.search_interface import search_interface
 from src.tools.repl_tool import code_execution_repl
 
