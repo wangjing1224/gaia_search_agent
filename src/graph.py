@@ -40,6 +40,7 @@ def create_graph():
         {
             "search_subgraph_node": "search_subgraph_node",
             "async_tools_execution_node": "async_tools_execution_node",
+            "agent": "agent",  # 继续思考
             END: END,
         }
     )
