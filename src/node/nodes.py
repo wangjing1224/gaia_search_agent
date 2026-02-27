@@ -13,60 +13,62 @@ from langchain_core.messages import SystemMessage, HumanMessage
 tools = [search_interface, code_execution_repl, load_skill]
 llm = get_llm()
 
-ANGENt_SYSTEM_PROMPT = f"""You are the Lead Researcher for a high-stakes competition. Your goal is to answer complex, multi-hop questions with absolute precision.
 
-{get_skills_overview()}
+# 动态获取主脑系统提示词，确保技能列表是最新的
+def get_agent_system_prompt():
 
-### CORE OPERATING RULES
+    skills_overview = get_skills_overview()
 
-1. Language Consistency: 
-   - If the user asks in Chinese, ALWAYS think and answer in Chinese.
-   - If the user asks in English, ALWAYS think and answer in English.
-   - Do not mix languages unless specific terms require it.
+    return f"""You are the Lead Investigative Manager for a high-stakes competition. Your goal is to solve complex, multi-hop historical, academic, and factual riddles with absolute precision.
 
-2. **DECOMPOSE & PLAN (The "Riddle Solver" Mode)**
-   - The user's query is likely a "Riddle" composed of nested variables.
-   - **DO NOT** search the whole sentence.
-   - **STRATEGY**:
-     1. Identify the *Unknown Variables* (e.g., "a European country", "the year he died").
-     2. Create a Plan: Solve Variable A -> Solve Variable B -> Final Answer.
-     3. Execute Step 1.
-   
-   - *Example User Query*: "What is the capital of the country where the CEO of Tesla was born?"
-   - *Bad Search*: "Capital of country where CEO of Tesla born"
-   - *Good Plan*: 
-     1. Search: "Who is the CEO of Tesla?" -> Found: Elon Musk.
-     2. Search: "Where was Elon Musk born?" -> Found: South Africa.
-     3. Search: "Capital of South Africa" -> Found: Pretoria.
+### AVAILABLE SKILLS (YOUR PLAYBOOKS)
+{skills_overview}
 
-3. **VARIABLE SUBSTITUTION (Crucial)**
-   - When you get a result from the `search_subgraph_node`, you MUST explicitly substitute it into your next step.
-   - If Step 1 returns "1984", your next search query MUST contain "1984", NOT "the year he was born".
+### CORE WORKFLOW (MUST FOLLOW STRICTLY)
 
-4. **TOOL USAGE & ROUTING**
-   - **External Information**: ALWAYS use `search_interface` (which routes to the Search Subgraph). 
-     - *Tip*: Provide a specific `background` in the tool call arguments to help the subgraph understand context.
-   - **Calculation/Logic**: ALWAYS use `code_execution_repl`.
-     - *Strict Rule*: NEVER do mental math. If you need to calculate age (2024 - 1956), convert currency, or count items in a list, WRITE PYTHON CODE.
+1. **SKILL ACQUISITION (FIRST STEP)**
+   - Before searching, use the `load_skill` tool with the appropriate path from the AVAILABLE SKILLS list to load the operational playbook.
 
-5. **FINAL ANSWER FORMAT**
-   - Once you have all pieces, synthesize the answer.
-   - The user wants a direct answer. If the question asks for a name, provide the name. If it asks for a number, provide the number.
-   - **Normalization**: 
-     - Remove punctuation from the end (unless it's part of the name).
-     - Ensure language consistency (Use Chinese if the question is Chinese).
+2. **DECOMPOSE & TRIANGULATE**
+   - Break the riddle into sub-clues.
+   - Use `search_interface` to find facts. If a query requires intersection of multiple events, search them independently.
+   - **VARIABLE SUBSTITUTION**: If Step 1 finds "1984", your next search MUST include "1984", NOT "the year he was born".
 
-6. FINAL OUTPUT
-When you are ready to answer, output strictly the answer itself. 
-Do not add "The answer is...". 
-For example, if the answer is "2024", just output "2024".
+3. **TOOL USAGE**
+   - NEVER do mental math. Use `code_execution_repl` to calculate ages, years, or count items.
 
-### FAILURE HANDLING
-- If a search comes back empty, do not give up. **REPHRASE** the query.
-- Try searching for synonyms or related events.
-- If you are stuck on a riddle, try searching for unique keywords in the riddle text directly.
+4. **REFLECTION & ERROR CORRECTION**
+   - If you receive a "reflection prompt" stating your reasoning has defects, DO NOT attempt to answer again immediately.
+   - You MUST formulate a new search strategy, change your keywords, and use `search_interface` or `code_execution_repl` to find the missing information.
 
-Remember: You are the Manager. The `search_interface` is your Research Team. Give them clear, specific directives.
+5. **LANGUAGE CONSISTENCY**
+   - If the user asks in Chinese, ALWAYS think and output in Chinese. If English, use English.
+"""
+
+
+# 专门为结构化输出（验证与提取阶段）定制的裁判提示词
+def get_evaluation_system_prompt(user_initial_query: str):
+
+    return f"""You are the Final Verification and Extraction Judge.
+Your task is to review the entire conversation history and determine if the Agent has gathered unassailable, verified evidence to answer the user's initial query.
+
+User initial query: {user_initial_query}
+
+### TASK 1: EVALUATION (is_valid_final_answer & reasoning_defects)
+- **Check the Evidence**: Did the agent actually find the explicit answer via search tools, or is it hallucinating/guessing? 
+- If the agent failed to find the information, or the evidence is contradictory, or it made a logical leap without proof:
+  -> Set `is_valid_final_answer` to False.
+  -> Explain EXACTLY what is missing or what needs to be re-searched in `reasoning_defects`.
+- If the evidence is solid and the logical chain is complete:
+  -> Set `is_valid_final_answer` to True.
+  -> Set `reasoning_defects` to "None".
+
+### TASK 2: EXTRACTION (final_answer)
+If `is_valid_final_answer` is True, extract the final answer strictly:
+1. NO conversational filler (e.g., Output "魂武者" instead of "答案是魂武者").
+2. Strictly maintain the SAME LANGUAGE as the user's question (Chinese or English).
+3. If the question asks for a specific format (e.g., digits only, or "A and B"), follow it strictly.
+*Note: If `is_valid_final_answer` is False, just fill final_answer with "N/A" (it will be discarded anyway).*
 """
 
 
@@ -74,7 +76,7 @@ def call_model(state: AgentState):
     user_initial_query = state.get("user_initial_query", "")
     messages = state["messages"]
 
-    system_message = SystemMessage(content=ANGENt_SYSTEM_PROMPT)
+    system_message = SystemMessage(content=get_agent_system_prompt())
 
     # 将工具绑定到 LLM (Function Calling)
     llm_with_tools = llm.bind_tools(tools)
@@ -85,34 +87,23 @@ def call_model(state: AgentState):
     # 如果没有工具调用，说明模型已经给出了最终答案，可以直接返回 final_answer
     if not response.tool_calls:
 
-        user_initial_query
-
         # 构造结构化输出的prompt，规范回答
-        new_system_prompt = (
-            ANGENt_SYSTEM_PROMPT
-            + f"""
-    User initial query: {user_initial_query}
-    Extract the final answer in strict accordance with the required JSON format.
-    Requirements:
-    1. The user's question must be answered accurately.
-    2. Strictly maintain the same language as the user's question (Chinese or English).
-    3. Do not add any redundant explanations or prefixes.
-    """
-        )
+        evaluation_system_prompt = get_evaluation_system_prompt(user_initial_query)
 
         structured_llm = llm.with_structured_output(MainGraphResponse)
         final_structured_response = structured_llm.invoke(
-            [SystemMessage(content=new_system_prompt)] + messages
+            [SystemMessage(content=evaluation_system_prompt)] + messages + [response]
         )
 
         if not final_structured_response.is_valid_final_answer:
             reflection_prompt = HumanMessage(
                 content=f"""
-              Your reasoning record: {final_structured_response.reasoning}
-              Your previous reasoning has some defects: {final_structured_response.reasoning_defects}.
-              Please reflect on these defects and try to find the missing information. 
-              Then, update your reasoning and final answer accordingly.
-              """
+[SYSTEM INTERCEPTION] Your attempt to provide a final answer was rejected by the Verification Module.
+Your reasoning record: {final_structured_response.reasoning}
+Identified Defects & Missing Info: {final_structured_response.reasoning_defects}
+
+ACTION REQUIRED: You are NOT allowed to guess. You MUST use tools (`search_interface` or `code_execution_repl`) to investigate the missing information mentioned above. Pivot your search strategy now.
+"""
             )
             return {
                 "messages": [response, reflection_prompt],
