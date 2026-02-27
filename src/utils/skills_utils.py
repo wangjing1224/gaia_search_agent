@@ -58,10 +58,16 @@ def init_skills_cache(skills_dir: str = "./src/skills") -> None:
     
 def get_skills_overview() -> str:
     if not _SKILLS_OVERVIEW_CACHE:
+        init_skills_cache()  # 如果缓存为空，尝试初始化
+    
+    if not _SKILLS_OVERVIEW_CACHE:
         return "Skills are none."
     return _SKILLS_OVERVIEW_CACHE
 
 def get_skill_prompt(skill_path: str) -> str:
+    if not _SKILLS_CACHE:
+        init_skills_cache()  # 如果缓存为空，尝试初始化
+    
     if skill_path in _SKILLS_CACHE:
         return _SKILLS_CACHE[skill_path]["content"]
     else:

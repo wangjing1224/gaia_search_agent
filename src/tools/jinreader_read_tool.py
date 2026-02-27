@@ -73,7 +73,9 @@ async def web_read_jina(url: str, query: str, instruct: InstructOptions = "Given
             print(f"Error during Jina Reader request: {str(e)}, URL: {url}")
             return f"Error: An exception occurred while reading the page. Details: {str(e)}, URL: {url}"
         
-    paginate_content = paginate_web_content(full_content=full_content, query=query, page_size=PAGE_SIZE, instruct=instruct)
+    paginate_content = await asyncio.to_thread(
+        paginate_web_content, full_content=full_content, query=query, page_size=PAGE_SIZE, instruct=instruct
+    )
     
     result_content = (
         f"SOURCE URL: {url}\n"
