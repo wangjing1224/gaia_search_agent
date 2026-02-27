@@ -26,5 +26,7 @@ def route_to_tool(state: AgentState):
         return "search_subgraph_node"
     elif tool_name == "code_execution_repl":
         return "async_tools_execution_node"
+    elif tool_name == "load_skill":
+        return "tools"
     
     return END  # 默认结束
