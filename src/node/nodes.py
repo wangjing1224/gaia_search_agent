@@ -14,41 +14,14 @@ tools = [search_interface, code_execution_repl, load_skill]
 llm = get_llm()
 
 
-# 动态获取主脑系统提示词，确保技能列表是最新的
-def get_agent_system_prompt():
-
-    skills_overview = get_skills_overview()
-
-    return f"""You are an elite Factual Research Execution Agent.
-### AVAILABLE PLAYBOOKS (SKILLS)
-{skills_overview}
-
-### SYSTEM DIRECTIVES (CRITICAL)
-
-1. **NO PREMATURE REASONING (ZERO-SHOT TOOL CALL REQUIREMENT)**
-   - When you receive a new riddle, you are STRICTLY FORBIDDEN from guessing the answer, formulating hypotheses, or recalling historical events from your internal memory.
-   - Your VERY FIRST AND ONLY action must be to evaluate the riddle type and call the `load_skill` tool to fetch the exact playbook.
-   - Do NOT output long reasoning before loading the skill. Keep your initial thought to 1-2 sentences deciding which skill to load.
-
-2. **EXECUTE THE PLAYBOOK**
-   - Once the skill is loaded, it becomes your primary operating system.
-   - Strictly follow the step-by-step tactical workflow defined in that specific skill. 
-   - Base all your logic and next steps entirely on the rules inside the loaded skill and the evidence returned by your search tools.
-
-3. **FINAL OUTPUT FORMAT**
-   - Your internal reasoning must be logical and evidence-based.
-   - Your final extracted answer MUST strictly match the language of the user's initial query (e.g., Chinese query -> Chinese answer).
-   - Output ONLY the exact entity name or number requested. No conversational filler.
-"""
-
-
 # 专门为结构化输出（验证与提取阶段）定制的裁判提示词
-def get_evaluation_system_prompt(user_initial_query: str):
+def get_evaluation_system_prompt(user_initial_query: str,loaded_skill_content: str ) -> str:
 
     return f"""You are the Final Verification and Extraction Judge.
 Your task is to review the entire conversation history and determine if the Agent has gathered unassailable, verified evidence to answer the user's initial query.
 
 User's initial query: {user_initial_query}
+loaded skill content: {loaded_skill_content}
 
 ### TASK 1: EVALUATION (is_valid_final_answer & reasoning_defects)
 - **Check the Evidence**: Did the agent actually find the explicit answer via search tools, or is it hallucinating/guessing? 
@@ -71,8 +44,15 @@ If `is_valid_final_answer` is True, extract the final answer strictly:
 def call_model(state: AgentState):
     user_initial_query = state.get("user_initial_query", "")
     messages = state["messages"]
+    loaded_skill_content = state.get("loaded_skill_content", "")
+    loaded_skill_reasoning = state.get("get_skills_reasoning", "")
+    
+    AGENT_SYSTEM_PROMPT = f"""
+    User's Initial Query: {user_initial_query}
+    {loaded_skill_content}
+    """
 
-    system_message = SystemMessage(content=get_agent_system_prompt())
+    system_message = SystemMessage(content=AGENT_SYSTEM_PROMPT)
 
     # 将工具绑定到 LLM (Function Calling)
     llm_with_tools = llm.bind_tools(tools)
@@ -84,7 +64,7 @@ def call_model(state: AgentState):
     if not response.tool_calls:
 
         # 构造结构化输出的prompt，规范回答
-        evaluation_system_prompt = get_evaluation_system_prompt(user_initial_query)
+        evaluation_system_prompt = get_evaluation_system_prompt(user_initial_query, loaded_skill_content)
 
         structured_llm = llm.with_structured_output(MainGraphResponse)
         final_structured_response = structured_llm.invoke(
@@ -92,17 +72,32 @@ def call_model(state: AgentState):
         )
 
         if not final_structured_response.is_valid_final_answer:
-            reflection_prompt = HumanMessage(
-                content=f"""
-                Your attempt to provide a final answer was rejected by the Verification Module.
-                Your reasoning record: {final_structured_response.reasoning}
-                Identified Defects & Missing Info: {final_structured_response.reasoning_defects}
-                ACTION REQUIRED: You are NOT allowed to guess. You must analyze zhe reasoning recordd and defects,then you should judge whether to reselect a skill or reformulate your search strategy. 
-                """
-            )
-            return {
-                "messages": [response, reflection_prompt],
-            }
+            if final_structured_response.thinking_process_is_error:
+                reflection_mainnode_prompt = HumanMessage(
+                    content=f"""
+                    Your attempt to provide a final answer was rejected by the Verification Module.
+                    Your reasoning record: {final_structured_response.reasoning}
+                    Identified Defects & Missing Info: {final_structured_response.reasoning_defects}
+                    ACTION REQUIRED: You are NOT allowed to guess. You must analyze zhe reasoning recordd and defects,then you should reformulate your search strategy. 
+                    """
+                )
+                return {
+                    "messages": [response, reflection_mainnode_prompt],
+                    "thinking_process_is_error": True
+                }
+            else:
+                reflection_skillloadnode_prompt = HumanMessage(
+                    content=f"""
+                    The Verification Module has determined that the final answer is invalid.
+                    This suggests that the error may lie in the application of the skills.
+                    Your get_skills_reasoning for loading the skill was: {loaded_skill_reasoning}
+                    Please reselect the skills based on the user's initial query and the skills overview.
+                    """
+                )
+                return {
+                    "skills_load_messages": [response, reflection_skillloadnode_prompt],
+                    "thinking_process_is_error": False
+                }
 
         return {
             "messages": [response],

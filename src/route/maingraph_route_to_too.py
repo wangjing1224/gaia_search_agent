@@ -6,13 +6,13 @@ from src.state.state import AgentState
 def route_to_tool(state: AgentState):
     messages = state["messages"]
     last_message = messages[-1]
+    thinking_process_is_error = state.get("thinking_process_is_error", None)
     
-    # 检查最后一条消息是 HumanMessage
-    if isinstance(last_message, HumanMessage):
-        return "agent"  # 如果最后一条消息是用户输入，继续让 Agent 思考，而不是直接结束
-    
-    if not getattr(last_message, "tool_calls", None):
-        return END  # 没有 ToolCall，结束对话
+    if thinking_process_is_error is not None:
+        if thinking_process_is_error:
+            return "agent"  # 思维过程有误，进入 Agent 思考
+        else:
+            return "skills_load_node"  # 思维过程正确，加载的技能有误,重新进入技能加载节点
     
     # 检查最后一条消息是否包含 ToolCall
     if not last_message.tool_calls:
@@ -26,7 +26,5 @@ def route_to_tool(state: AgentState):
         return "search_subgraph_node"
     elif tool_name == "code_execution_repl":
         return "async_tools_execution_node"
-    elif tool_name == "load_skill":
-        return "tools"
     
     return END  # 默认结束
