@@ -3,14 +3,12 @@ from src.state.state import AgentState
 from src.llm.model import get_llm
 from src.interface_tools.search_interface import search_interface
 from src.tools.repl_tool import code_execution_repl
-from src.tools.load_skill_tool import load_skill
 from src.schemas.main_graph_response import MainGraphResponse
-from src.utils.skills_utils import get_skills_overview
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
 # 初始化 LLM 和 Tools
-tools = [search_interface, code_execution_repl, load_skill]
+tools = [search_interface, code_execution_repl]
 llm = get_llm()
 
 
