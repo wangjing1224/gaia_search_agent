@@ -102,4 +102,7 @@ def call_model(state: AgentState):
             "final_answer": final_structured_response.final_answer,
         }
 
-    return {"messages": [response]}
+    return {
+        "messages": [response],
+        "thinking_process_is_error": None  # 继续保持原有状态，等待后续判断
+    }
