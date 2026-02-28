@@ -65,7 +65,7 @@ def create_graph():
     # 工具执行完 -> 回到 Agent 继续思考
     workflow.add_edge("search_subgraph_node", "agent")
     workflow.add_edge("async_tools_execution_node", "agent")
-    workflow.add_edge("tools", "agent")
+    workflow.add_edge("tools", "skills_load_node")  # 工具执行完回到技能加载节点，重新评估是否需要加载更多技能
     
     # 4. 编译图
     # 这里可以使用 MemorySaver 实现长对话记忆，但为了最简启动暂不加
