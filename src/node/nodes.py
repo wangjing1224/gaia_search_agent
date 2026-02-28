@@ -93,7 +93,7 @@ def call_model(state: AgentState):
                     """
                 )
                 return {
-                    "skills_load_messages": [response, reflection_skillloadnode_prompt],
+                    "skills_load_messages": [reflection_skillloadnode_prompt],
                     "thinking_process_is_error": False
                 }
 
