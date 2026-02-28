@@ -44,7 +44,7 @@ def maingraph_skills_load_node(state: AgentState):
     
     # 将系统提示词和技能加载过程中的消息记录一起发送给LLM，得到新的技能加载消息
     system_prompt = SystemMessage(content=SKILLS_LOAD_NODE_SYSTEM_PROMPT)
-    llm_with_tools = llm.with_tools(tools)
+    llm_with_tools = llm.bind_tools(tools)
     response = llm_with_tools.invoke([system_prompt] + skills_load_messages)
     
     # 此时表示技能加载节点已经完成了技能选择和工具调用，得到了新的技能加载消息，接下来需要更新状态
