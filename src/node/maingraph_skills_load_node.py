@@ -37,8 +37,8 @@ USER'S INITIAL QUERY:
 
 ### YOUR ONLY MISSION:
 1. Read the user's initial query to determine its type (e.g., Multi-hop, Academic, Calculation).
-2. IF YOU HAVEN'T LOADED THE SKILL YET: Call the `load_skill` tool with the correct file path from the SKILLS OVERVIEW.
-3. IF YOU ALREADY CALLED THE TOOL AND RECEIVED THE CONTENT: DO NOT call the tool again! Simply output the word "DONE" to finish your turn.
+2. Then you should use the "load_skill" tool to load the most appropriate Operational Playbook (Skill) that can solve the user's query. Each skill is designed for a specific query type, so choose carefully based on the query's characteristics.
+3. IF YOU ALREADY GOT THE SKILL CONTENT, SIMPLY OUTPUT WHY THIS SKILL WAS CHOSEN BASED on the user's query type, DO NOT OUTPUT ANYTHING ELSE. The content of the skill will be extracted by a later node, you don't need to worry about it.
 4. **RED LINE**: DO NOT attempt to solve the riddle. DO NOT search your memory. DO NOT output any reasoning steps about the answer itself.
 """
 
@@ -62,8 +62,7 @@ USER'S INITIAL QUERY:
     # 此时表示技能加载节点已经完成了技能选择和工具调用，得到了新的技能加载消息，接下来需要更新状态
     if not response.tool_calls:
         # 构造新的系统提示词，让他整理好收集到的技能加载消息，输出最终加载好的技能内容，供后续节点使用
-        SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT ="""You are the Data Extractor.
-You have just completed the skill loading process.
+        SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT ="""
 Based on the conversation history, your task is to extract the EXACT raw markdown content of the loaded skill and your brief reasoning.
 You MUST format your output as a JSON object.
 

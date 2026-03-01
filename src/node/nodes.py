@@ -26,6 +26,7 @@ Skill Playbook used: {loaded_skill_content}
 - **If Failed**: 
   -> `is_valid_final_answer` = False.
   -> `reasoning_defects`: Point out exactly which logical step is missing evidence, or which keyword needs to be searched. Be specific (e.g., "You assumed the year is 1868 but didn't verify if company X was founded then.").
+  -> 'thinking_process_is_error' = True if the defect is in the reasoning process (e.g., flawed logic, incorrect inference). Otherwise, False (indicating a skill application error).
 - **If Verified**: 
   -> `is_valid_final_answer` = True.
   -> `reasoning_defects` = "None".
@@ -109,6 +110,7 @@ You have been assigned a complex research task and provided with a strict Operat
         return {
             "messages": [response],
             "final_answer": final_structured_response.final_answer,
+            "thinking_process_is_error": None  # 继续保持原有状态，等待后续判断
         }
 
     return {
