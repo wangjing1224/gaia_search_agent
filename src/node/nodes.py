@@ -16,26 +16,24 @@ llm = get_llm()
 def get_evaluation_system_prompt(user_initial_query: str,loaded_skill_content: str ) -> str:
 
     return f"""You are the Final Verification and Extraction Judge.
-Your task is to review the entire conversation history and determine if the Agent has gathered unassailable, verified evidence to answer the user's initial query.
+Your mandate is to review the entire research history and strictly determine if the Agent has gathered unassailable, verified evidence to answer the user's query.
 
 User's initial query: {user_initial_query}
-loaded skill content: {loaded_skill_content}
+Skill Playbook used: {loaded_skill_content}
 
-### TASK 1: EVALUATION (is_valid_final_answer & reasoning_defects)
-- **Check the Evidence**: Did the agent actually find the explicit answer via search tools, or is it hallucinating/guessing? 
-- If the agent failed to find the information, or the evidence is contradictory, or it made a logical leap without proof:
-  -> Set `is_valid_final_answer` to False.
-  -> Explain EXACTLY what is missing or what needs to be re-searched in `reasoning_defects`.
-- If the evidence is solid and the logical chain is complete:
-  -> Set `is_valid_final_answer` to True.
-  -> Set `reasoning_defects` to "None".
+### TASK 1: EVIDENCE EVALUATION (`is_valid_final_answer` & `reasoning_defects`)
+- **Zero Hallucination Rule**: Did the agent actually find the explicit answer using `search_interface` or `code_execution_repl`? If the agent relied on internal memory, guessed, or hallucinated a connection, FAIL it.
+- **If Failed**: 
+  -> `is_valid_final_answer` = False.
+  -> `reasoning_defects`: Point out exactly which logical step is missing evidence, or which keyword needs to be searched. Be specific (e.g., "You assumed the year is 1868 but didn't verify if company X was founded then.").
+- **If Verified**: 
+  -> `is_valid_final_answer` = True.
+  -> `reasoning_defects` = "None".
 
-### TASK 2: EXTRACTION (final_answer)
-If `is_valid_final_answer` is True, extract the final answer strictly:
-1. NO conversational filler (e.g., Output "魂武者" instead of "答案是魂武者").
-2. Strictly maintain the SAME LANGUAGE as the user's question (Chinese or English).
-3. If the question asks for a specific format (e.g., digits only, or "A and B"), follow it strictly.
-*Note: If `is_valid_final_answer` is False, just fill final_answer with "N/A" (it will be discarded anyway).*
+### TASK 2: ANSWER EXTRACTION (`final_answer`)
+- If `is_valid_final_answer` is True, extract the exact final answer.
+- **Normalization**: NO conversational filler. If the answer is "2024", output "2024", not "The year is 2024".
+- **Language**: Strictly match the language of the User's initial query (e.g., Chinese query -> Chinese answer).
 """
 
 
@@ -45,10 +43,21 @@ def call_model(state: AgentState):
     loaded_skill_content = state.get("loaded_skill_content", "")
     loaded_skill_reasoning = state.get("get_skills_reasoning", "")
     
-    AGENT_SYSTEM_PROMPT = f"""
-    User's Initial Query: {user_initial_query}
-    {loaded_skill_content}
-    """
+    AGENT_SYSTEM_PROMPT = f"""You are the Playbook Execution Engine. 
+You have been assigned a complex research task and provided with a strict Operational Playbook (Loaded Skill).
+
+### USER'S QUERY TO SOLVE:
+{user_initial_query}
+
+### YOUR OPERATIONAL PLAYBOOK (STRICT ADHERENCE REQUIRED):
+{loaded_skill_content}
+
+### GLOBAL EXECUTION RULES:
+1. **Follow the Playbook**: You must execute the steps defined in the Operational Playbook EXACTLY. Do not skip steps.
+2. **Variable Substitution**: If a search reveals a variable (e.g., Year = 1907), substitute "1907" into all subsequent tool calls.
+3. **Delegation**: Use `search_interface` to gather facts. Use `code_execution_repl` for any math, counting, or date logic. NO MENTAL MATH.
+4. **Correction Handling**: If you previously received a Reflection Prompt rejecting your answer, you MUST pivot your strategy. Change your search keywords or use a different angle based on the defects pointed out.
+"""
 
     system_message = SystemMessage(content=AGENT_SYSTEM_PROMPT)
 

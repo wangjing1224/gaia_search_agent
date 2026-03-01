@@ -10,10 +10,11 @@ from langchain_core.messages import SystemMessage, HumanMessage
 tools = [load_skill]
 llm = get_llm()
 
+
 def maingraph_skills_load_node(state: AgentState):
     # 这个message是主图中传递的消息列表，仅为了提取用户最初问题
     messages = state["messages"]
-    
+
     # 初始化用户最初问题
     if state.get("user_initial_query") is None:
         # 从消息中提取用户最初的问题
@@ -23,49 +24,70 @@ def maingraph_skills_load_node(state: AgentState):
                 user_initial_query = msg.content
                 break
         state["user_initial_query"] = user_initial_query
-    
-    # 这才是技能加载节点真正使用的消息列表，专门记录技能加载过程中的消息，包括系统提示词和工具调用的输入输出等，供技能加载过程中的多轮交互使用    
+
+    # 这才是技能加载节点真正使用的消息列表，专门记录技能加载过程中的消息，包括系统提示词和工具调用的输入输出等，供技能加载过程中的多轮交互使用
     skills_load_messages = state["skills_load_messages"]
+
+    # 定义主图技能加载节点的系统提示词，包含技能列表和用户最初问题等关键信息，指导模型正确选择技能并调用load_skill工具
+    SKILLS_LOAD_NODE_SYSTEM_PROMPT = f"""You are the Skill Router for a factual research system. 
     
-    # 定义主图技能加载节点的系统提示词，包含技能列表和用户最初问题等关键信息，指导模型正确选择技能并调用load_skill工具    
-    SKILLS_LOAD_NODE_SYSTEM_PROMPT = f"""
-    You are an elite Factual Research Execution Agent.
-    SKILLS OVERVIEW:
-    {get_skills_overview()}
-    USER'S INITIAL QUERY:
-    {state['user_initial_query']}
-    Your task is to load the most relevant skill based on the user's initial query.
-    Follow these directives strictly:
-    1. Analyze the user's initial query and determine which skill is most relevant to solving the riddle.
-    2. Call the `load_skill` tool with the name of the identified skill tofetch the detailed playbook.
-    3. Do NOT attempt to answer the question or perform any reasoning before loading the skill
-    4. Keep your initial analysis concise (1-2 sentences) and focused solely on skill selection.
-    """
-    
+SKILLS OVERVIEW:
+{get_skills_overview()}
+
+USER'S INITIAL QUERY:
+{state['user_initial_query']}
+
+### YOUR ONLY MISSION:
+1. Read the user's initial query to determine its type (e.g., Multi-hop, Academic, Calculation).
+2. IF YOU HAVEN'T LOADED THE SKILL YET: Call the `load_skill` tool with the correct file path from the SKILLS OVERVIEW.
+3. IF YOU ALREADY CALLED THE TOOL AND RECEIVED THE CONTENT: DO NOT call the tool again! Simply output the word "DONE" to finish your turn.
+4. **RED LINE**: DO NOT attempt to solve the riddle. DO NOT search your memory. DO NOT output any reasoning steps about the answer itself.
+"""
+
     # 将系统提示词和技能加载过程中的消息记录一起发送给LLM，得到新的技能加载消息
     system_prompt = SystemMessage(content=SKILLS_LOAD_NODE_SYSTEM_PROMPT)
-    llm_with_tools = llm.bind_tools(tools)
-    response = llm_with_tools.invoke([system_prompt] + skills_load_messages)
     
+    # 判断是否是技能加载节点的第一轮交互，如果是第一轮，需要加上用户提示词，防止出错
+    is_first_turn = len(skills_load_messages) == 0
+    if is_first_turn:
+        human_prompt = HumanMessage(content=state["user_initial_query"])
+        input_messages = [system_prompt, human_prompt] + skills_load_messages
+    else:
+        input_messages = [system_prompt] + skills_load_messages
+        
+    llm_with_tools = llm.bind_tools(tools)
+    response = llm_with_tools.invoke(input_messages)
+    
+    # 根据是否是第一轮交互来决定返回的消息列表，如果是第一轮，需要把用户提示词也加上，供后续技能加载交互使用
+    return_messages = [human_prompt, response] if is_first_turn else [response]
+
     # 此时表示技能加载节点已经完成了技能选择和工具调用，得到了新的技能加载消息，接下来需要更新状态
     if not response.tool_calls:
         # 构造新的系统提示词，让他整理好收集到的技能加载消息，输出最终加载好的技能内容，供后续节点使用
-        SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT = """
-        You have completed the skill loading process. 
-        Now, based on the entire conversation history of this skill loading phase.
-        Don't alter zhe content
-        """
-        
-        output_system_prompt = SystemMessage(content=SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT)
+        SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT ="""You are the Data Extractor.
+You have just completed the skill loading process.
+Based on the conversation history, your task is to extract the EXACT raw markdown content of the loaded skill and your brief reasoning.
+You MUST format your output as a JSON object.
+
+### STRICT RULES:
+1. `loaded_skill_content`: MUST be the exact, unmodified text returned by the `load_skill` tool. Do not summarize or alter the playbook.
+2. `get_skills_reasoning`: Briefly state why this skill was chosen based on the user's query type.
+"""
+
+        output_system_prompt = SystemMessage(
+            content=SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT
+        )
         structured_llm = llm.with_structured_output(MainGraphSkillsLoadResponse)
-        output_response = structured_llm.invoke([output_system_prompt] + skills_load_messages + [response])
-        
+        output_response = structured_llm.invoke(
+            [output_system_prompt] + skills_load_messages + [response]
+        )
+
         return {
-            "skills_load_messages": "clear",
+            "skills_load_messages": return_messages + [output_response],
             "loaded_skill_content": output_response.loaded_skill_content,
-            "get_skills_reasoning": output_response.get_skills_reasoning
-        }  
-    
+            "get_skills_reasoning": output_response.get_skills_reasoning,
+        }
+
     return {
-        "skills_load_messages": [response]
+        "skills_load_messages": return_messages
     }

@@ -5,6 +5,9 @@ from typing import Annotated, List, Union, Literal
 from typing import Optional
 
 def skills_load_messages_reducer(current: List[AnyMessage], update: Union[List[AnyMessage], str]) -> List[AnyMessage]:
+    if current is None:
+        current = []
+    
     if update == "clear":
         return []
     else:

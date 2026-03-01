@@ -31,7 +31,7 @@ def create_graph():
     
     # 工具执行节点 (使用 LangGraph 预构建的 ToolNode)
     tools = [load_skill]
-    tool_node = ToolNode(tools)
+    tool_node = ToolNode(tools,messages_key="skills_load_messages")
     workflow.add_node("tools", tool_node)
 
     # 3. 添加边 (Edges)
