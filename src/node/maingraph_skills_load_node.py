@@ -12,6 +12,16 @@ llm = get_llm()
 
 
 def maingraph_skills_load_node(state: AgentState):
+    user_initial_query = state.get("user_initial_query")
+    if user_initial_query is None:
+        # 这个message是主图中传递的消息列表，仅为了提取用户最初问题
+        messages = state["messages"]
+        # 从消息中提取用户最初的问题
+        for msg in messages:
+            if isinstance(msg, HumanMessage):
+                user_initial_query = msg.content
+                break
+    
 
     # 这才是技能加载节点真正使用的消息列表，专门记录技能加载过程中的消息，包括系统提示词和工具调用的输入输出等，供技能加载过程中的多轮交互使用
     skills_load_messages = state.get("skills_load_messages", [])
@@ -23,7 +33,7 @@ SKILLS OVERVIEW:
 {get_skills_overview()}
 
 USER'S INITIAL QUERY:
-{state['user_initial_query']}
+{user_initial_query}
 
 ### YOUR ONLY MISSION:
 1. Read the user's initial query to determine its type (e.g., Multi-hop, Academic, Calculation).
@@ -38,7 +48,7 @@ USER'S INITIAL QUERY:
     # 判断是否是技能加载节点的第一轮交互，如果是第一轮，需要加上用户提示词，防止出错
     is_first_turn = len(skills_load_messages) == 0
     if is_first_turn:
-        human_prompt = HumanMessage(content=state["user_initial_query"])
+        human_prompt = HumanMessage(content=user_initial_query)
         input_messages = [system_prompt, human_prompt] + skills_load_messages
     else:
         input_messages = [system_prompt] + skills_load_messages
@@ -81,15 +91,6 @@ You MUST format your output as a JSON object.
     # 初始化用户最初问题
     # 注意：用户最初问题只需要在技能加载节点的第一轮交互时从消息中提取一次，后续技能加载交互不需要重复提取，直接保存在状态中供后续节点使用即可
     if state.get("user_initial_query") is None:
-        # 这个message是主图中传递的消息列表，仅为了提取用户最初问题
-        messages = state["messages"]
-        # 从消息中提取用户最初的问题
-        user_initial_query = None
-        for msg in messages:
-            if isinstance(msg, HumanMessage):
-                user_initial_query = msg.content
-                break
-        
         return {
             "user_initial_query": user_initial_query,
             "skills_load_messages": return_messages
