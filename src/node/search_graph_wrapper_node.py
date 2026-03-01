@@ -34,8 +34,7 @@ async def search_graph_wrapper_node(state: AgentState):
                 "rerank_results": [],  # 初始没有重排序结果，交给子图去
                 "summary": ""
             }
-        
-        tasks.append(search_graph.ainvoke(subgraph_input))
+            tasks.append(search_graph.ainvoke(subgraph_input))
     
     # 并发执行子图任务
     print(f"Executing {len(tasks)} search graph calls concurrently...")

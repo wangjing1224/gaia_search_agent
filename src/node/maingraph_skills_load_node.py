@@ -12,21 +12,9 @@ llm = get_llm()
 
 
 def maingraph_skills_load_node(state: AgentState):
-    # 这个message是主图中传递的消息列表，仅为了提取用户最初问题
-    messages = state["messages"]
-
-    # 初始化用户最初问题
-    if state.get("user_initial_query") is None:
-        # 从消息中提取用户最初的问题
-        user_initial_query = None
-        for msg in messages:
-            if isinstance(msg, HumanMessage):
-                user_initial_query = msg.content
-                break
-        state["user_initial_query"] = user_initial_query
 
     # 这才是技能加载节点真正使用的消息列表，专门记录技能加载过程中的消息，包括系统提示词和工具调用的输入输出等，供技能加载过程中的多轮交互使用
-    skills_load_messages = state["skills_load_messages"]
+    skills_load_messages = state.get("skills_load_messages", [])
 
     # 定义主图技能加载节点的系统提示词，包含技能列表和用户最初问题等关键信息，指导模型正确选择技能并调用load_skill工具
     SKILLS_LOAD_NODE_SYSTEM_PROMPT = f"""You are the Skill Router for a factual research system. 
@@ -83,11 +71,31 @@ You MUST format your output as a JSON object.
         )
 
         return {
-            "skills_load_messages": return_messages + [output_response],
+            "skills_load_messages": return_messages,
             "loaded_skill_content": output_response.loaded_skill_content,
             "get_skills_reasoning": output_response.get_skills_reasoning,
         }
+    
+    
 
-    return {
-        "skills_load_messages": return_messages
-    }
+    # 初始化用户最初问题
+    # 注意：用户最初问题只需要在技能加载节点的第一轮交互时从消息中提取一次，后续技能加载交互不需要重复提取，直接保存在状态中供后续节点使用即可
+    if state.get("user_initial_query") is None:
+        # 这个message是主图中传递的消息列表，仅为了提取用户最初问题
+        messages = state["messages"]
+        # 从消息中提取用户最初的问题
+        user_initial_query = None
+        for msg in messages:
+            if isinstance(msg, HumanMessage):
+                user_initial_query = msg.content
+                break
+        
+        return {
+            "user_initial_query": user_initial_query,
+            "skills_load_messages": return_messages
+        }
+    # 如果不是第一轮交互，说明已经提取过用户最初问题了，直接更新技能加载消息列表即可
+    else:
+        return {
+            "skills_load_messages": return_messages
+        }
