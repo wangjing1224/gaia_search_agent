@@ -38,7 +38,13 @@ Skill Playbook used: {loaded_skill_content}
 - **Language**: Strictly match the language of the User's initial query (e.g., Chinese query -> Chinese answer).
 
 ### OUTPUT FORMAT:
-You MUST format your output as a JSON object matching the required schema.
+You MUST format your output as a JSON object with ALL of the following fields (every field is REQUIRED):
+    "reasoning": "Your detailed reasoning process for evaluating the answer",
+    "is_valid_final_answer": True/False,
+    "reasoning_defects": "None or description of defects",
+    "final_answer": "The exact final answer",
+    "thinking_process_is_error": True/False
+DO NOT omit any field. All five fields must be present.
 """
 
 
@@ -77,24 +83,13 @@ You have been assigned a complex research task and provided with a strict Operat
 
         # 构造结构化输出的prompt，规范回答
         evaluation_system_prompt = get_evaluation_system_prompt(user_initial_query, loaded_skill_content)
-        
-        parser = JsonOutputParser(pydantic_object=MainGraphResponse)
-        
-        final_prompt = evaluation_system_prompt + "\n\n" + parser.get_format_instructions()
 
-        # structured_llm = llm.with_structured_output(MainGraphResponse)
-        # final_structured_response = structured_llm.invoke(
-        #     [SystemMessage(content=evaluation_system_prompt)] + messages + [response]
-        # )
-        
-        llm_no_streaming = llm.bind(stream=False)  # 结构化输出不需要流式，确保一次性返回完整内容
-        raw_structured_response = llm_no_streaming.invoke(
-            [SystemMessage(content=final_prompt)] + messages + [response]
-        )
+        structured_llm = llm.with_structured_output(MainGraphResponse, method="json_mode")
         
         try:
-            parsed_dict = parser.invoke(raw_structured_response)
-            final_structured_response = MainGraphResponse(**parsed_dict)
+            final_structured_response = structured_llm.invoke(
+                [SystemMessage(content=evaluation_system_prompt)] + messages + [response]
+            )
         except Exception as e:
             print("Error parsing structured response:", e)
             final_structured_response = MainGraphResponse(

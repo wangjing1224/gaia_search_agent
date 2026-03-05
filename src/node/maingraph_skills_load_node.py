@@ -70,39 +70,30 @@ You MUST format your output as a JSON object.
 ### STRICT RULES:
 1. `loaded_skill_content`: MUST be the exact, unmodified text returned by the `load_skill` tool. Do not summarize or alter the playbook.
 2. `get_skills_reasoning`: Briefly state why this skill was chosen based on the user's query type.
+
+Output ONLY the JSON object, no other text.
 """
 
-        # output_system_prompt = SystemMessage(
-        #     content=SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT
-        # )
-        # structured_llm = llm.with_structured_output(MainGraphSkillsLoadResponse)
-        # output_response = structured_llm.invoke(
-        #     [output_system_prompt] + skills_load_messages + [response]
-        # )
-        
-        parser = JsonOutputParser(pydantic_object=MainGraphSkillsLoadResponse)
-        
-        final_prompt = SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT + "\n\n" + parser.get_format_instructions()
-        
-        llm_no_streaming = llm.bind(stream=False)  # 结构化输出不需要流式，确保一次性返回完整内容
-        raw_structured_response = llm_no_streaming.invoke(
-            [SystemMessage(content=final_prompt)] + skills_load_messages + [response]
-        )
+        structured_llm = llm.with_structured_output(MainGraphSkillsLoadResponse, method="json_mode")
         
         try:
-            parsed_dict = parser.invoke(raw_structured_response)
-            loaded_skill_content = parsed_dict.get("loaded_skill_content", "")
-            get_skills_reasoning = parsed_dict.get("get_skills_reasoning", "")
+            output_response = structured_llm.invoke(
+                [SystemMessage(content=SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT)] + skills_load_messages + [response]
+            )
+            loaded_skill_content = output_response.loaded_skill_content
+            get_skills_reasoning = output_response.get_skills_reasoning
         except Exception as e:
             print("Error parsing structured response:", e)
-            loaded_skill_content = "The skill content could not be extracted due to an error in parsing the response.Please don't use tools calls, then return the skills_load_node."
-            get_skills_reasoning = "No reasoning provided or error in parsing response."
+            # 降级方案：直接从 skills_load_messages 中提取工具返回的原始内容
+            loaded_skill_content = ""
+            for msg in skills_load_messages:
+                if hasattr(msg, 'name') and msg.name == 'load_skill':
+                    loaded_skill_content = msg.content
+                    break
+            if not loaded_skill_content:
+                loaded_skill_content = "The skill content could not be extracted due to an error in parsing the response."
+            get_skills_reasoning = "Fallback extraction due to parsing error."
 
-        # return {
-        #     "skills_load_messages": return_messages,
-        #     "loaded_skill_content": output_response.loaded_skill_content,
-        #     "get_skills_reasoning": output_response.get_skills_reasoning,
-        # }
         return {
             "skills_load_messages": return_messages,
             "loaded_skill_content": loaded_skill_content,
