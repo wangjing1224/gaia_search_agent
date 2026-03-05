@@ -6,6 +6,7 @@ from src.tools.repl_tool import code_execution_repl
 from src.schemas.main_graph_response import MainGraphResponse
 
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import JsonOutputParser
 
 # 初始化 LLM 和 Tools
 tools = [search_interface, code_execution_repl]
@@ -35,6 +36,9 @@ Skill Playbook used: {loaded_skill_content}
 - If `is_valid_final_answer` is True, extract the exact final answer.
 - **Normalization**: NO conversational filler. If the answer is "2024", output "2024", not "The year is 2024".
 - **Language**: Strictly match the language of the User's initial query (e.g., Chinese query -> Chinese answer).
+
+### OUTPUT FORMAT:
+You MUST format your output as a JSON object matching the required schema.
 """
 
 
@@ -73,11 +77,33 @@ You have been assigned a complex research task and provided with a strict Operat
 
         # 构造结构化输出的prompt，规范回答
         evaluation_system_prompt = get_evaluation_system_prompt(user_initial_query, loaded_skill_content)
+        
+        parser = JsonOutputParser(pydantic_object=MainGraphResponse)
+        
+        final_prompt = evaluation_system_prompt + "\n\n" + parser.get_format_instructions()
 
-        structured_llm = llm.with_structured_output(MainGraphResponse)
-        final_structured_response = structured_llm.invoke(
-            [SystemMessage(content=evaluation_system_prompt)] + messages + [response]
+        # structured_llm = llm.with_structured_output(MainGraphResponse)
+        # final_structured_response = structured_llm.invoke(
+        #     [SystemMessage(content=evaluation_system_prompt)] + messages + [response]
+        # )
+        
+        llm_no_streaming = llm.bind(stream=False)  # 结构化输出不需要流式，确保一次性返回完整内容
+        raw_structured_response = llm_no_streaming.invoke(
+            [SystemMessage(content=final_prompt)] + messages + [response]
         )
+        
+        try:
+            parsed_dict = parser.invoke(raw_structured_response)
+            final_structured_response = MainGraphResponse(**parsed_dict)
+        except Exception as e:
+            print("Error parsing structured response:", e)
+            final_structured_response = MainGraphResponse(
+                reasoning="JSON parsing failed due to missing fields.",
+                is_valid_final_answer=False,
+                reasoning_defects=f"Format error: {e}",
+                final_answer="",
+                thinking_process_is_error=True
+            )
 
         if not final_structured_response.is_valid_final_answer:
             if final_structured_response.thinking_process_is_error:

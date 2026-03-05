@@ -5,6 +5,7 @@ from src.tools.load_skill_tool import load_skill
 from src.schemas.main_graph_skills_load_response import MainGraphSkillsLoadResponse
 
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import JsonOutputParser
 
 # 初始化 LLM 和 Tools
 tools = [load_skill]
@@ -71,22 +72,44 @@ You MUST format your output as a JSON object.
 2. `get_skills_reasoning`: Briefly state why this skill was chosen based on the user's query type.
 """
 
-        output_system_prompt = SystemMessage(
-            content=SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT
+        # output_system_prompt = SystemMessage(
+        #     content=SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT
+        # )
+        # structured_llm = llm.with_structured_output(MainGraphSkillsLoadResponse)
+        # output_response = structured_llm.invoke(
+        #     [output_system_prompt] + skills_load_messages + [response]
+        # )
+        
+        parser = JsonOutputParser(pydantic_object=MainGraphSkillsLoadResponse)
+        
+        final_prompt = SKILLS_LOAD_NODE_OUTPUT_SYSTEM_PROMPT + "\n\n" + parser.get_format_instructions()
+        
+        llm_no_streaming = llm.bind(stream=False)  # 结构化输出不需要流式，确保一次性返回完整内容
+        raw_structured_response = llm_no_streaming.invoke(
+            [SystemMessage(content=final_prompt)] + skills_load_messages + [response]
         )
-        structured_llm = llm.with_structured_output(MainGraphSkillsLoadResponse)
-        output_response = structured_llm.invoke(
-            [output_system_prompt] + skills_load_messages + [response]
-        )
+        
+        try:
+            parsed_dict = parser.invoke(raw_structured_response)
+            loaded_skill_content = parsed_dict.get("loaded_skill_content", "")
+            get_skills_reasoning = parsed_dict.get("get_skills_reasoning", "")
+        except Exception as e:
+            print("Error parsing structured response:", e)
+            loaded_skill_content = "The skill content could not be extracted due to an error in parsing the response.Please don't use tools calls, then return the skills_load_node."
+            get_skills_reasoning = "No reasoning provided or error in parsing response."
 
+        # return {
+        #     "skills_load_messages": return_messages,
+        #     "loaded_skill_content": output_response.loaded_skill_content,
+        #     "get_skills_reasoning": output_response.get_skills_reasoning,
+        # }
         return {
             "skills_load_messages": return_messages,
-            "loaded_skill_content": output_response.loaded_skill_content,
-            "get_skills_reasoning": output_response.get_skills_reasoning,
+            "loaded_skill_content": loaded_skill_content,
+            "get_skills_reasoning": get_skills_reasoning
         }
     
     
-
     # 初始化用户最初问题
     # 注意：用户最初问题只需要在技能加载节点的第一轮交互时从消息中提取一次，后续技能加载交互不需要重复提取，直接保存在状态中供后续节点使用即可
     if state.get("user_initial_query") is None:
