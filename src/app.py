@@ -1,16 +1,23 @@
 # src/app.py
 import os
+import json
 from dotenv import load_dotenv
 
-# 1. 必须最先加载环境变量！否则后面的 import 找不到 Key 会报错
+# 首先加载环境变量，确保在导入 graph 之前环境变量已经准备好
 load_dotenv()
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 import uvicorn
 
-# 2. 环境变量加载完之后，再导入 graph
+# 环境变量加载完之后，再导入 graph
 from src.agent import graph
+
+# 定义一个自定义的 JSONResponse，确保输出的 JSON 是 UTF-8 编码且不转义中文
+class CJSONResponse(JSONResponse):
+    media_type = "application/json; charset=utf-8"
+    def render(self, content) -> bytes:
+        return json.dumps(content, ensure_ascii=False).encode("utf-8")
 
 app = FastAPI()
 
@@ -25,8 +32,6 @@ async def chat_endpoint(request: Request):
             raise HTTPException(status_code=400, detail="Missing 'question' field")
 
         # 2. 调用 LangGraph
-        # Research Agent 可能需要跑几十秒，这里使用 ainvoke 等待结果
-        # 注意：user_id 可以随机生成或固定，用于隔离会话
         inputs = {
             "messages": [("user", question)],
             "user_initial_query": question
@@ -39,17 +44,13 @@ async def chat_endpoint(request: Request):
         # LangGraph 的最后一条消息通常是 AI 的回答
         final_message = result.get("final_answer", "")
         
-        return JSONResponse(final_message)
-
-        # # 4. 简单的后处理（符合比赛归一化要求，虽然评测会做，但我们最好先做）
-        # answer_content = answer_content.strip() 
-
-        # # 5. 返回比赛要求的 JSON 格式: {"answer": "..."}
-        # return JSONResponse(content={"answer": answer_content})
+        print("Final answer from graph:", final_message)
+        
+        return CJSONResponse(content={"answer": final_message})
 
     except Exception as e:
         print(f"Error processing request: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return CJSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     # PAI-EAS 部署时通常会指定端口，或者默认 8000

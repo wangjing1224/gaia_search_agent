@@ -58,9 +58,13 @@ Gaia Research Agent 是一个基于 **LangGraph** 构建的高级研究型智能
 
 主脑负责识别意图、加载技能 S.O.P、调用工具并进行最终的裁判校验。
 
+![主图编排 (Main Graph)](./main_graph.png)
+
 ### 搜索子图循环 (Search Subgraph)
 
 复杂的搜索行为被剥离为子图。工作流：主节点规划搜索词 ➡️ 并发执行各路Search API ➡️ 去重与Qwen Rerank ➡️ 判断是否达成目标（最多循环5次） ➡️ 触发 Jina 深度阅读(如需) ➡️ 汇总证据返回主脑。
+
+![搜索子图循环 (Search Subgraph)](./sub_graph.png)
 
 ---
 
@@ -153,40 +157,7 @@ langgraph dev
 
 执行后，终端会输出一个 Web UI 链接（通常为 `http://localhost:2024`）。在浏览器中打开，即可进入 LangGraph Studio 界面，输入你的测试问题并实时观察 Agent 的思考路径。
 
-### 4. 启动标准 HTTP 服务 (生产/评测模式)
-
-如果你想通过代码、Postman 或自动化脚本批量测试，可以启动内置的 FastAPI 标准服务：
-
-Bash
-
-```
-uvicorn src.app:app --host 0.0.0.0 --port 8000
-```
-
-**命令行/脚本测试调用：**
-
-- Mac / Linux (Bash):
-    
-
-Bash
-
-```
-curl -X POST "http://localhost:8000/" \
-     -H "Content-Type: application/json" \
-     -d '{"question": "2018年诺贝尔物理学奖的一位女性得主，曾在加拿大的一所顶尖大学长期任教。这所大学在2023年正式任命了一位新的校长，请问这位新校长的英文全名是什么？"}'
-```
-
-- Windows (PowerShell):
-    
-
-PowerShell
-
-```
-Invoke-RestMethod -Uri "http://localhost:8000/" `
-    -Method Post `
-    -Headers @{"Content-Type"="application/json"} `
-    -Body '{"question": "2018年诺贝尔物理学奖的一位女性得主，曾在加拿大的一所顶尖大学长期任教。这所大学在2023年正式任命了一位新的校长，请问这位新校长的英文全名是什么？"}'
-```
+![LangGraph Studio 操作界面](./LangSmith.png)
 
 ---
 

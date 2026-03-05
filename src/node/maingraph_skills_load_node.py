@@ -71,7 +71,11 @@ You MUST format your output as a JSON object.
 1. `loaded_skill_content`: MUST be the exact, unmodified text returned by the `load_skill` tool. Do not summarize or alter the playbook.
 2. `get_skills_reasoning`: Briefly state why this skill was chosen based on the user's query type.
 
-Output ONLY the JSON object, no other text.
+### OUTPUT FORMAT:
+You MUST format your output as a JSON object with ALL of the following fields (every field is REQUIRED):
+    "loaded_skill_content": "The exact markdown content of the loaded skill",
+    "get_skills_reasoning": "The reasoning behind choosing this skill"
+DO NOT omit any field. All five fields must be present.
 """
 
         structured_llm = llm.with_structured_output(MainGraphSkillsLoadResponse, method="json_mode")
