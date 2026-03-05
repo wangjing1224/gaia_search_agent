@@ -65,9 +65,10 @@ You have been assigned a complex research task and provided with a strict Operat
 
 ### GLOBAL EXECUTION RULES:
 1. **Follow the Playbook**: You must execute the steps defined in the Operational Playbook EXACTLY. Do not skip steps.
-2. **Variable Substitution**: If a search reveals a variable (e.g., Year = 1907), substitute "1907" into all subsequent tool calls.
+2. **Variable Substitution**: If a search reveals a variable (e.g., Year = 1994), substitute "1994" into all subsequent tool calls.
 3. **Delegation**: Use `search_interface` to gather facts. Use `code_execution_repl` for any math, counting, or date logic. NO MENTAL MATH.
 4. **Correction Handling**: If you previously received a Reflection Prompt rejecting your answer, you MUST pivot your strategy. Change your search keywords or use a different angle based on the defects pointed out.
+5. **Anti-Tunnel Vision**: If your current search keywords yield no relevant results after 2 attempts, STOP searching the same thing. Pick a completely different clue from the user's query and start a new search track.
 """
 
     system_message = SystemMessage(content=AGENT_SYSTEM_PROMPT)

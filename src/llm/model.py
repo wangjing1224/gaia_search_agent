@@ -2,7 +2,7 @@
 import os
 from langchain_openai import ChatOpenAI
 
-def get_llm(model_name: str = "qwen3.5-plus-2026-02-15"):
+def get_llm(model_name: str = "qwen3.5-flash"):
     """
     获取适配阿里 DashScope 的 LLM 实例
     """
