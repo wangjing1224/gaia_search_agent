@@ -43,21 +43,27 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     PHASE 1: BROAD SEARCH
     - ALWAYS start with `web_search_bocha`. It is your primary radar.
     - If the query is about a Chinese entity, use Chinese keywords.
-    - If the query is International/Technical, try English keywords.
+    - If the query is International/Technical, try English keywords FIRST.
+    - **LANGUAGE ESCALATION**: If English yields nothing after 1 attempt, try the entity's native language.
 
     PHASE 2: DEEP READING (The "Jina" Trigger)
-    - Look at the `web_search_bocha` results.
-    - Is there a result where the Title matches the user's intent, but the Snippet is cut off?
-    - YES -> Call `web_read_jina` on that specific URL immediately.
+    - If a search result title looks relevant but the snippet is truncated → call `web_read_jina` on that URL immediately.
+    - Priority targets: Wikipedia pages, company history pages, biographical articles.
     - Do NOT search again if you have a promising URL waiting to be read.
 
     PHASE 3: PRECISION FALLBACK (The "SerpApi" Trigger)
     - If `web_search_bocha` returns NOTHING relevant after 1-2 attempts:
     - Switch to `web_search_serpapi`.
-    - CRITICAL: Translate the query to English before calling SerpApi for international topics.
+    - Try LIST queries: "list of [industry] companies founded in [region]".
     
     PHASE 4: ACADEMIC SEARCH
-    - Only use `paper_search_arxiv` (CS/Math/Physics) or `paper_search_pubmed` (Bio/Med) if the user explicitly asks for "papers", "studies", or "scientific research".
+    - Only use `paper_search_arxiv` or `paper_search_pubmed` if the user explicitly asks for papers or scientific research.
+    
+    ### 6. ANTI-DEADLOCK RULE (CRITICAL!)
+    - If you have searched the SAME topic 2 times with similar keywords and got irrelevant results both times:
+      **STOP IMMEDIATELY. Output your best summary based on what you HAVE found.**
+    - Do NOT rephrase the same query slightly and try again. This wastes search budget.
+    - "Information not found for this specific sub-question" is a perfectly valid output.
     """
 
     # 获取最后一次rerank结果。如果没有rerank结果或者rerank当前的loop数和搜索循环数不一致，说明当前没有有效的rerank结果
@@ -69,14 +75,17 @@ def subgraph_search_main_node(state: SubgraphSearchState):
         if not reranked_results:
             # 第一次搜索，提示模型分析用户查询，想出一个精准的搜索查询来寻找相关信息
             if search_loop_count == 0:
-                no_rerank_prompt = "This is your first search. Please analyze the user's query and come up with a precise search query to find relevant information."
+                no_rerank_prompt = "This is your FIRST search. Please analyze the user's query and call a search tool to find relevant information."
             # 如果不是第一次搜索，说明之前的搜索没有得到有用的结果，需要提示模型换个搜索关键词或者换个角度继续搜索
             else:
-                no_rerank_prompt = "Your previous search did not yield useful results. You must review the search tool histories to analyze the search query. Please try a different search query or approach to find relevant information."
+                no_rerank_prompt = "Your previous search did not yield useful results. Review the history and CALL A TOOL with a DIFFERENT keyword or approach."
         else:
             # 如果有rerank结果，但rerank当前的loop数和搜索循环数不一致，说明上一次搜索没有得到有用的结果，需要提示模型换个搜索关键词或者换个角度继续搜索
             if latest_rerank_result.get("loop", -1) != search_loop_count:
-                no_rerank_prompt = "Your previous search did not yield useful results. You must review the search tool histories and the the historical search results to analyze the search query. Please try a different search query or approach to find relevant information."
+                no_rerank_prompt = "Your previous search did not yield useful results. Review the history and CALL A TOOL with a DIFFERENT keyword or approach."
+    else:
+        # 如果有有效的rerank结果，说明之前的搜索得到了有用的结果，需要提示模型分析这些结果，看看能不能从中找到有用的信息，或者根据这些结果调整搜索策略
+        no_rerank_prompt = "Review the newly fetched information. If you have the EXACT answer, output your summary directly. Otherwise, call a tool to dig deeper."
 
     # 如果有历史rerank结果，拼接成字符串，作为提示语的一部分，告诉模型之前搜索过什么，得到过什么结果，帮助模型调整搜索策略
     for rerank_result in reranked_results:
@@ -123,14 +132,24 @@ def subgraph_search_main_node(state: SubgraphSearchState):
     4. Output Style:
        - Provide a concise summary that directly answers the "Search Task".
        - Include key details (Years, Full Names, Locations) found in the text.
+       - **For entity names (companies, people, institutions): always include the OFFICIAL FULL NAME as it appears in authoritative sources (e.g., Wikipedia).** Do not abbreviate.
        - If the answer is NOT in the search results, explicitly state: "Information not found in search results."
-    \n
+    
+    {tools_selection_prompt}
+    
+    ### CURRENT STATUS & NEXT ACTION
+    Current Search Loop: {search_loop_count} / 5
+    {no_rerank_prompt}
+
+    CRITICAL INSTRUCTION: Based on the current status, you MUST choose ONE of the following actions right now:
+    - OPTION A: Call one of the available tools to search or read.
+    - OPTION B: Output your final text summary to the user.
     """
 
     if search_loop_count >= 5:
         # 达到最大搜索循环次数，停止搜索
         # 构造系统提示
-        force_stop_prompt = "You have reached the maximum number of search steps (5). Please summarize what you have found so far, even if it is incomplete. DO NOT search again."
+        force_stop_prompt = "CRITICAL: You have reached the maximum number of search steps (5). DO NOT CALL ANY TOOLS. You MUST output a final text summary based on what you have found so far. If you found nothing, say 'Information not found'.\n\n"
 
         force_stop_system_prompt = SystemMessage(
             content=force_stop_prompt + SEARCH_SYSTEM_PROMPT
@@ -138,11 +157,12 @@ def subgraph_search_main_node(state: SubgraphSearchState):
 
         # 重新 invoke，但不绑定工具，强迫它生成文本
         response = llm.invoke([force_stop_system_prompt] + messages)
+        
+        summary = response.content if response.content else "Information not found."
         return {
             "messages": [response],
+            "summary": summary
         }
-
-    SEARCH_SYSTEM_PROMPT += tools_selection_prompt + "\n\n" + no_rerank_prompt
 
     # 1. 准备系统提示和消息
     system_message = SystemMessage(content=SEARCH_SYSTEM_PROMPT)

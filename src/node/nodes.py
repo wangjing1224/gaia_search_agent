@@ -14,39 +14,67 @@ llm = get_llm()
 
 
 # 专门为结构化输出（验证与提取阶段）定制的裁判提示词
-def get_evaluation_system_prompt(user_initial_query: str,loaded_skill_content: str ) -> str:
+def get_evaluation_system_prompt(user_initial_query: str, loaded_skill_content: str) -> str:
 
     return f"""You are the Final Verification and Extraction Judge.
-Your mandate is to review the entire research history and strictly determine if the Agent has gathered unassailable, verified evidence to answer the user's query.
+Your job is to determine if the Agent has gathered sufficient verified evidence to answer the user's query.
 
 User's initial query: {user_initial_query}
 Skill Playbook used: {loaded_skill_content}
 
-### TASK 1: EVIDENCE EVALUATION (`is_valid_final_answer` & `reasoning_defects`)
-- **Zero Hallucination Rule**: Did the agent actually find the explicit answer using `search_interface` or `code_execution_repl`? If the agent relied on internal memory, guessed, or hallucinated a connection, FAIL it.
-- **If Failed**: 
-  -> `is_valid_final_answer` = False.
-  -> `reasoning_defects`: Point out exactly which logical step is missing evidence, or which keyword needs to be searched. Be specific (e.g., "You assumed the year is 1868 but didn't verify if company X was founded then.").
-  -> 'thinking_process_is_error' = True if the defect is in the reasoning process (e.g., flawed logic, incorrect inference). Otherwise, False (indicating a skill application error).
-- **If Verified**: 
-  -> `is_valid_final_answer` = True.
-  -> `reasoning_defects` = "None".
+### TASK 1: EVIDENCE EVALUATION
 
-### TASK 2: ANSWER EXTRACTION (`final_answer`)
-- If `is_valid_final_answer` is True, extract the exact final answer.
-- **Normalization**: NO conversational filler. If the answer is "2024", output "2024", not "The year is 2024".
-- **Language**: Strictly match the language of the User's initial query (e.g., Chinese query -> Chinese answer).
+**Evaluate these criteria:**
+
+1. **Evidence-Based?**: Did the agent find the answer through tool calls (`search_interface` or `code_execution_repl`), NOT from internal memory or guessing?
+
+2. **Sufficient Evidence?**: Is there enough evidence from search results or computation to support the answer? 
+   - For factual queries: at least one credible source confirming the answer.
+   - For multi-step problems: key intermediate steps must be supported by evidence.
+   - For calculations: the computation must have been executed, not estimated.
+
+3. **No Contradiction?**: Do any of the gathered results actively contradict the proposed answer? 
+   - Note: "information not found" is NOT a contradiction. It simply means the data isn't available online.
+
+4. **Playbook Compliance?**: Did the agent follow the Playbook's strategy? If the Playbook requires cross-verification, was it attempted?
+
+**Decision:**
+- Evidence-based + Sufficient + No contradiction → `is_valid_final_answer` = True
+- Any criterion fails → `is_valid_final_answer` = False
+  - `reasoning_defects`: Explain exactly what is missing and suggest a specific next action.
+  - `thinking_process_is_error`: True if the logic/reasoning is flawed. False if the agent just needs more data.
+
+### TASK 2: ANSWER EXTRACTION (`final_answer`) — STRICT FORMAT RULES
+
+If `is_valid_final_answer` is True, extract the exact final answer following these rules:
+
+1. **Bare Answer Only**: Output ONLY the answer itself — a name, a number, a term. 
+   - No prefixes like "答案是", "The answer is".
+   - No parenthetical annotations like "(English Name)" or "（又称XXX）".  
+   - No quotation marks wrapping the answer unless the answer itself is a quoted title.
+   - No explanatory text.
+
+2. **Language Matching**: The answer language MUST match the question language.
+   - Chinese question → Chinese answer.
+   - English question → English answer.
+   - Exception: If the question explicitly asks for a name in a specific language (e.g., "英文全名", "Chinese name"), use that language.
+
+3. **Precision & Completeness**: 
+   - For entity names (people, companies, institutions, places): use the OFFICIAL FULL NAME as found in authoritative sources (e.g., Wikipedia, official websites). Do not abbreviate or use informal nicknames.
+   - For numbers: output the number directly (e.g., "140", "3."), matching the format found in source materials.
+   - For titles of books/papers/works: preserve the original language and formatting of the title.
+
+4. **Multi-entity Answers**: Use comma + space to separate, e.g., "Alice, Bob, Charlie".
 
 ### OUTPUT FORMAT:
-You MUST format your output as a JSON object with ALL of the following fields (every field is REQUIRED):
-    "reasoning": "Your detailed reasoning process for evaluating the answer",
-    "is_valid_final_answer": True/False,
+JSON object with ALL of the following fields (every field is REQUIRED):
+    "reasoning": "Your detailed evaluation reasoning",
+    "is_valid_final_answer": true/false,
     "reasoning_defects": "None or description of defects",
-    "final_answer": "The exact final answer",
-    "thinking_process_is_error": True/False
-DO NOT omit any field. All five fields must be present.
+    "final_answer": "The exact final answer following the format rules above",
+    "thinking_process_is_error": true/false
+DO NOT omit any field.
 """
-
 
 def call_model(state: AgentState):
     user_initial_query = state.get("user_initial_query", "")
@@ -54,21 +82,36 @@ def call_model(state: AgentState):
     loaded_skill_content = state.get("loaded_skill_content", "")
     loaded_skill_reasoning = state.get("get_skills_reasoning", "")
     
-    AGENT_SYSTEM_PROMPT = f"""You are the Playbook Execution Engine. 
-You have been assigned a complex research task and provided with a strict Operational Playbook (Loaded Skill).
+    AGENT_SYSTEM_PROMPT = f"""You are the Playbook Execution Engine. Your job is to solve the user's query by strictly following the loaded Operational Playbook.
 
-### USER'S QUERY TO SOLVE:
+### USER'S QUERY:
 {user_initial_query}
 
-### YOUR OPERATIONAL PLAYBOOK (STRICT ADHERENCE REQUIRED):
+### YOUR OPERATIONAL PLAYBOOK:
 {loaded_skill_content}
 
-### GLOBAL EXECUTION RULES:
-1. **Follow the Playbook**: You must execute the steps defined in the Operational Playbook EXACTLY. Do not skip steps.
-2. **Variable Substitution**: If a search reveals a variable (e.g., Year = 1994), substitute "1994" into all subsequent tool calls.
-3. **Delegation**: Use `search_interface` to gather facts. Use `code_execution_repl` for any math, counting, or date logic. NO MENTAL MATH.
-4. **Correction Handling**: If you previously received a Reflection Prompt rejecting your answer, you MUST pivot your strategy. Change your search keywords or use a different angle based on the defects pointed out.
-5. **Anti-Tunnel Vision**: If your current search keywords yield no relevant results after 2 attempts, STOP searching the same thing. Pick a completely different clue from the user's query and start a new search track.
+### EXECUTION RULES:
+
+1. **Playbook First**: Read the Playbook carefully. It contains the step-by-step strategy for THIS type of problem. Follow it in order. Do not improvise.
+
+2. **Tool Usage**:
+   - Use `search_interface` to find facts. Provide a clear `query` (search keywords) and `background` (what you're looking for and why).
+   - Use `code_execution_repl` for ANY math, counting, date arithmetic, or data processing. Never do mental math.
+
+3. **Search Quality**:
+   - Make each search count. Before calling `search_interface`, think about what specific keywords will get you the best results.
+   - Put the most distinctive/unique terms in the `query`.
+   - Use `background` to give context that helps the search sub-agent make better decisions.
+   - For international topics, use English keywords. For Chinese topics, use Chinese keywords.
+
+4. **Use Previous Results**: After each search returns, READ the results carefully. Extract key facts (names, years, locations) and use them in subsequent searches.
+
+5. **Know When to Stop**: 
+   - If the Playbook defines a convergence/stop condition, follow it.
+   - Do not keep searching once you have enough evidence to answer confidently.
+   - Do not search for information that is unlikely to change your answer.
+
+6. **Correction Handling**: If you receive a rejection with defect feedback, address the specific defects pointed out. Change your approach based on the feedback.
 """
 
     system_message = SystemMessage(content=AGENT_SYSTEM_PROMPT)

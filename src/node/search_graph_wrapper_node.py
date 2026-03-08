@@ -31,8 +31,9 @@ async def search_graph_wrapper_node(state: AgentState):
                 "current_query": query,
                 "messages": [("user", user_message)],
                 "search_results": [],  # 初始没有搜索结果，交给子图去
-                "rerank_results": [],  # 初始没有重排序结果，交给子图去
-                "summary": ""
+                "reranked_results": [],  # 初始没有重排序结果，交给子图去
+                "summary": "",
+                "search_loop_count": 0
             }
             tasks.append(search_graph.ainvoke(subgraph_input))
     

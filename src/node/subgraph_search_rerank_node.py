@@ -96,7 +96,7 @@ def subgraph_search_rerank_node(state: SubgraphSearchState):
         # 将当前query_key的rerank结果添加到总的rerank结果中
         rerank_result_item : RerankResultItem = {
             "query": query_key,
-            "reranked_items": reranked_results
+            "rerank_items": reranked_results
         }
         
         # 将当前query_key的rerank结果项添加到总的rerank结果列表中
